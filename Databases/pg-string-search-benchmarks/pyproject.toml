@@ -1,0 +1,21 @@
+[project]
+name = "pg-string-search-benchmarks"
+version = "0.1.0"
+description = "Benchmark PostgreSQL string search strategies"
+readme = "README.md"
+authors = [
+    { name = "ruinivist", email = "ruinivist@proton.me" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "psycopg[binary]>=3.3.6",
+    "python-dotenv>=1.2.3",
+    "rich>=15.0.0",
+]
+
+[project.scripts]
+pg-string-search-benchmarks = "pg_string_search_benchmarks:main"
+
+[build-system]
+requires = ["uv_build>=0.12.3,<0.13.0"]
+build-backend = "uv_build"
