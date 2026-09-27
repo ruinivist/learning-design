@@ -30,7 +30,7 @@ FROM streams;
 | ------ | --------------- | ----------- | ------------ |
 | 123476 | 113414          | 0           | 2685         |
 
-For out case, not having nulls is good, and it's ok to ignore the blank titles as well.
+For our case, not having nulls is good, and it's ok to ignore the blank titles as well.
 
 _what is the length of strings we are dealing with and their distribution?_
 
@@ -65,3 +65,444 @@ ORDER BY length_bucket;
 | 120           | 0.84631831287051734750 | 99.0411092034079497  |
 | 130           | 0.83498007710000323950 | 99.8760892805079530  |
 | 140           | 0.12391071949204703748 | 100.0000000000000000 |
+
+What we notice is that most of the titles are failyr short, 80% of them are less than 50 characters.
+When building an evaluation metric, we should then try to mirror such a distribution and focus more on the
+shorter titles than catering to longer titles.
+
+_what about repeated data?_
+
+How much of stream titles are verbatim the same ( with just trimming for spaces at ends )?
+
+```sql
+SELECT
+  lower(btrim(title)) AS normalized_title,
+  count(*) AS stream_count
+FROM streams
+WHERE btrim(title) <> ''
+GROUP BY lower(btrim(title))
+HAVING count(*) > 1
+ORDER BY stream_count DESC
+LIMIT 20;
+```
+
+| normalized_title | stream_count |
+| ---------------- | ------------ |
+| fortnite         | 416          |
+| warzone          | 181          |
+| roblox           | 126          |
+| wolverine        | 121          |
+| my stream        | 107          |
+| fc27             | 107          |
+| minecraft        | 100          |
+| aniimo           | 98           |
+| hi               | 96           |
+| r6               | 90           |
+| cod              | 85           |
+| .                | 83           |
+| ranked           | 83           |
+| gaming           | 81           |
+| chillin          | 76           |
+| 2k27             | 73           |
+| chill            | 72           |
+| fc 27            | 68           |
+| apex             | 67           |
+| once human       | 66           |
+
+Very small titles make up bulk of the distribution, same as the popular ones. Something like "hi" where we do an exact
+match and rank based on similarity might be good from a text perspective but then this means our logic to search must
+be smarter as well.
+
+_What languages do I need to cover?_
+
+I'll prefer just english but what's the distribution like.
+
+```sql
+SELECT
+  language,
+  count(*) AS stream_count
+FROM streams
+GROUP BY language
+ORDER BY stream_count DESC;
+```
+
+| language | stream_count |
+| -------- | ------------ |
+| en       | 66742        |
+| ru       | 11847        |
+| de       | 9626         |
+| fr       | 8325         |
+| es       | 8029         |
+| pt       | 7380         |
+| ja       | 2248         |
+| pl       | 1488         |
+| it       | 1440         |
+| ar       | 829          |
+| zh       | 730          |
+| uk       | 718          |
+| nl       | 566          |
+| cs       | 438          |
+| tr       | 409          |
+| hu       | 408          |
+| other    | 355          |
+| sv       | 318          |
+| th       | 280          |
+| fi       | 190          |
+| da       | 186          |
+| el       | 181          |
+| no       | 151          |
+| ro       | 141          |
+| bg       | 116          |
+| sk       | 85           |
+| ko       | 58           |
+| zh-hk    | 53           |
+| tl       | 44           |
+| hi       | 24           |
+| ca       | 21           |
+| id       | 20           |
+| asl      | 15           |
+| vi       | 11           |
+| ms       | 4            |
+
+English is overwhelming. I never planned on having any other language but this gives us a direction as to what
+( if ever ) would need to be handled next.
+
+_Do we handle non-ascii parts in search?_
+
+```sql
+SELECT
+  count(*) FILTER (
+    WHERE octet_length(title) > length(title)
+  ) AS non_ascii_titles,
+  round(
+    count(*) FILTER (
+      WHERE octet_length(title) > length(title)
+    ) * 100.0 / count(*),
+    2
+  ) AS non_ascii_pct
+FROM streams
+WHERE btrim(title) <> '';
+```
+
+| non_ascii_pct | non_ascii_titles |
+| ------------- | ---------------- |
+| 36.53         | 44127            |
+
+36% of the titles have non-ascii bits, that seems a bit too large. Maybe all they have
+is emojis.
+I want to skip non-ascii and instead filter them out as "words". What % os text are we skipping.
+
+```sql
+WITH words AS (
+  SELECT word
+  FROM streams
+  CROSS JOIN LATERAL regexp_split_to_table(
+    btrim(title),
+    '\s+'
+  ) AS split_words(word)
+  WHERE btrim(title) <> ''
+)
+SELECT
+  count(*) AS total_words,
+  count(*) FILTER (
+    WHERE octet_length(word) > length(word)
+  ) AS skipped_words,
+  round(
+    count(*) FILTER (
+      WHERE octet_length(word) > length(word)
+    ) * 100.0 / count(*),
+    2
+  ) AS skipped_pct
+FROM words;
+```
+
+| total_words | skipped_words | skipped_pct |
+| ----------- | ------------- | ----------- |
+| 822463      | 121699        | 14.80       |
+
+That is still 14%, let's continue for now but we'll keep this in mind.
+
+_most common words_
+
+```sql
+WITH words AS (
+  SELECT
+    streams.id,
+    lower(word) AS word
+  FROM streams
+  CROSS JOIN LATERAL regexp_split_to_table(
+    btrim(title),
+    '[^[:alnum:]]+'
+  ) AS split_words(word)
+  WHERE btrim(title) <> ''
+)
+SELECT
+  word,
+  count(*) AS occurrences,
+  count(DISTINCT id) AS titles
+FROM words
+WHERE word <> ''
+GROUP BY word
+ORDER BY titles DESC
+LIMIT 30;
+```
+
+| word    | occurrences | titles |
+| ------- | ----------- | ------ |
+| the     | 8896        | 8040   |
+| to      | 6100        | 5747   |
+| discord | 5621        | 5567   |
+| a       | 5531        | 5126   |
+| 2       | 4699        | 4529   |
+| on      | 4754        | 4505   |
+| de      | 4866        | 4406   |
+| and     | 4670        | 4390   |
+| of      | 4408        | 4232   |
+| stream  | 4246        | 4162   |
+| 18      | 4036        | 4009   |
+| live    | 4105        | 3981   |
+| in      | 3812        | 3702   |
+| with    | 3748        | 3683   |
+| i       | 4053        | 3529   |
+| s       | 3624        | 3424   |
+| day     | 3390        | 3267   |
+| 1       | 3476        | 3261   |
+| 3       | 3492        | 3241   |
+| drops   | 2858        | 2787   |
+| for     | 2773        | 2670   |
+| sunday  | 2555        | 2520   |
+| en      | 2605        | 2509   |
+| no      | 2524        | 2310   |
+| playing | 2284        | 2269   |
+| chill   | 2277        | 2257   |
+| time    | 2179        | 2131   |
+| new     | 2249        | 2115   |
+| 7       | 2114        | 2081   |
+| is      | 2106        | 2036   |
+
+Numbers need to be handled in such a way that they do not distort.
+Something like "the", "to" should also not be counted in randking, maybe a punctuation dataset
+to skip also makes sense. But need to take into account for stop words in titles like
+"The Last of Us"; I feel like it's becoming VERY rules based at this point.
+
+_getting samples for typo correction_
+
+```sql
+WITH words AS (
+  SELECT
+    streams.id,
+    lower(word) AS word
+  FROM streams
+  CROSS JOIN LATERAL regexp_split_to_table(
+    btrim(title),
+    '[^[:alnum:]]+'
+  ) AS split_words(word)
+  WHERE btrim(title) <> ''
+)
+SELECT
+  word,
+  count(DISTINCT id) AS titles
+FROM words
+WHERE word <> ''
+  AND length(word) >= 4
+GROUP BY word
+HAVING count(DISTINCT id) BETWEEN 50 AND 200
+ORDER BY titles DESC
+LIMIT 30;
+```
+
+Length being more than 4 chars and occuring in 50 to 200 streams.
+
+```sql
+|word|titles|
+|----|------|
+|dota|200|
+|battle|200|
+|zombies|200|
+|there|200|
+|plus|199|
+|dawnwalker|199|
+|fantasy|198|
+|https|197|
+|daylight|196|
+|gamer|195|
+|1000|195|
+|ghost|194|
+|kingdom|194|
+|fort|193|
+|arena|193|
+|hours|192|
+|work|191|
+|rust|190|
+|through|190|
+|squad|189|
+|make|189|
+|tourney|188|
+|wird|188|
+|directo|188|
+|soir|188|
+|race|187|
+|découverte|187|
+|content|185|
+|affiliate|185|
+|diamond|184|
+```
+
+_distribution on very short terms_
+
+```sql
+
+WITH words AS (
+  SELECT
+    streams.id,
+    lower(word) AS word
+  FROM streams
+  CROSS JOIN LATERAL regexp_split_to_table(
+    btrim(title),
+    '[^[:alnum:]]+'
+  ) AS split_words(word)
+  WHERE btrim(title) <> ''
+)
+SELECT
+  word,
+  count(DISTINCT id) AS titles
+FROM words
+WHERE word ~ '^[a-z0-9]{2,3}$'
+GROUP BY word
+ORDER BY titles DESC
+LIMIT 30;
+```
+
+| word | titles |
+| ---- | ------ |
+| the  | 8040   |
+| to   | 5747   |
+| on   | 4505   |
+| de   | 4406   |
+| and  | 4390   |
+| of   | 4232   |
+| 18   | 4009   |
+| in   | 3702   |
+| day  | 3267   |
+| for  | 2670   |
+| en   | 2509   |
+| no   | 2310   |
+| new  | 2115   |
+| is   | 2036   |
+| my   | 2023   |
+| me   | 1947   |
+| we   | 1826   |
+| la   | 1763   |
+| 24   | 1480   |
+| dc   | 1477   |
+| eng  | 1409   |
+| it   | 1387   |
+| up   | 1221   |
+| 20   | 1193   |
+| do   | 1164   |
+| rp   | 1138   |
+| fr   | 1124   |
+| sub  | 1091   |
+| you  | 1078   |
+| wow  | 1071   |
+
+A trigram search is weak on this as very few trigrams to match.
+This should also be part of our test set.
+
+_rare terms_
+
+```sql
+WITH words AS (
+  SELECT
+    streams.id,
+    lower(word) AS word
+  FROM streams
+  CROSS JOIN LATERAL regexp_split_to_table(
+    btrim(title),
+    '[^[:alnum:]]+'
+  ) AS split_words(word)
+  WHERE btrim(title) <> ''
+),
+rare_words AS (
+  SELECT
+    word,
+    count(DISTINCT id) AS titles
+  FROM words
+  WHERE word ~ '^[a-z]{5,}$'
+  GROUP BY word
+  HAVING count(DISTINCT id) BETWEEN 2 AND 10
+)
+SELECT word, titles
+FROM rare_words
+ORDER BY md5(word)
+LIMIT 30;
+```
+
+> note the order by md5 for random shuffling
+
+This just becomes garbled mess at low frequencies.
+
+| word        | titles |
+| ----------- | ------ |
+| newshort    | 2      |
+| hotzone     | 7      |
+| whodis      | 2      |
+| grandmasta  | 3      |
+| dusklight   | 6      |
+| despite     | 3      |
+| enderal     | 2      |
+| wantedrp    | 2      |
+| oreilles    | 2      |
+| lingote     | 3      |
+| reversal    | 4      |
+| farmin      | 5      |
+| londres     | 2      |
+| mensch      | 2      |
+| brixies     | 4      |
+| mogger      | 3      |
+| siiii       | 2      |
+| lesserafim  | 2      |
+| tomato      | 2      |
+| pubdcito    | 2      |
+| vesna       | 5      |
+| mentalidade | 2      |
+| blaumeisen  | 2      |
+| frente      | 4      |
+| serotonin   | 2      |
+| descuento   | 3      |
+| danch       | 2      |
+| trofeo      | 2      |
+| majoras     | 4      |
+| xanthe      | 2      |
+
+### Finally defining an eval set
+
+From the frequency bands above, this is the fixed set of source terms that the
+different search approaches will be tested against.
+
+| frequency class | term       | title count | reason selected                         |
+| --------------- | ---------- | ----------: | --------------------------------------- |
+| common          | discord    |        5567 | recurring platform boilerplate          |
+| common          | fortnite   |        2026 | common game name and genuine subject    |
+| medium          | dota       |         200 | recognizable game name                  |
+| medium          | dawnwalker |         199 | longer, specific game/entity name       |
+| medium          | zombies    |         200 | ordinary word and common gaming subject |
+| short           | wow        |        1071 | short alphabetic and ambiguous term     |
+| short           | rp         |        1138 | two-letter abbreviation                 |
+| short           | r6         |         407 | short alphanumeric game abbreviation    |
+| rare            | enderal    |           2 | rare game name                          |
+| rare            | hotzone    |           7 | rare compound term                      |
+| rare            | serotonin  |           2 | rare ordinary word                      |
+| no match        | zzqvxx     |           0 | negative control                        |
+
+Then the different "matching" cases need to be covered to check if the search itself is
+typo-tolerant. The expected won't exactly match as I believe there would be some titles with
+actual typos in them.
+
+| source term | query     | case                   | expected relevant titles |
+| ----------- | --------- | ---------------------- | -----------------------: |
+| fortnite    | fortnite  | exact control          |                     2026 |
+| fortnite    | fortite   | deletion               |                     2026 |
+| fortnite    | fortnnite | insertion              |                     2026 |
+| fortnite    | fortnire  | substitution           |                     2026 |
+| fortnite    | fortntie  | adjacent transposition |                     2026 |

@@ -3,7 +3,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from .search_strategy import SearchResultT, SearchStrategy, SubstringMatch
+from .search_strategy import *
 
 
 def print_search_table(
@@ -13,7 +13,7 @@ def print_search_table(
     table = Table(
         title=(
             f"{query} · {type(strategy).__name__} "
-            f"({len(results)} matches, showing {len(shown)} unordered)"
+            f"({len(results)} matches, showing {len(shown)})"
         )
     )
     table.add_column("ID", justify="right")
@@ -26,8 +26,11 @@ def print_search_table(
 def main() -> None:
     console = Console()
 
-    queries = ["discord", "fortnite"]
-    strategies = [SubstringMatch()]
+    queries = ["fortnite"]
+    strategies = [SubstringMatch(), TrigramWordMatch()]
+
+    # connect can build connection from envs, this is how it autobuilds
+    # the db url
     with psycopg.connect() as db:
         for query in queries:
             for strat in strategies:
