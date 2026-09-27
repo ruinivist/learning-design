@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import psycopg
 
-type SearchResultT = list[tuple[int, str]]
+type SearchResultT = list[tuple[str, str]]
 
 
 class SearchStrategy(ABC):
@@ -13,15 +13,16 @@ class SearchStrategy(ABC):
 
 
 class SubstringMatch(SearchStrategy):
-    """no order is defined, simply does a like %...% based search"""
+    """Return unordered, case-insensitive substring matches."""
 
     def search(self, db: psycopg.Connection, query: str) -> SearchResultT:
         if not query:
             return []
         return db.execute(
             """
-            SELECT id, title FROM streams WHERE strpos(lower(title), lower(%s)) > 0
-            LIMIT 10
+            SELECT id, title
+            FROM streams
+            WHERE lower(title) LIKE %s
             """,
-            (query,),
+            (f"%{query.lower()}%",),
         ).fetchall()
