@@ -5,11 +5,32 @@ from rich.text import Text
 
 from .search_strategy import *
 
+eval_queries = [
+    "discord",
+    "fortnite",
+    "dota",
+    "dawnwalker",
+    "zombies",
+    "wow",
+    "rp",
+    "r6",
+    "enderal",
+    "hotzone",
+    "serotonin",
+    "chatting",
+    "zzqvxx",
+    "fortite",
+    "fortnnite",
+    "fortnire",
+    "fortntie",
+    "chetting",
+]
+
 
 def print_search_table(
     console: Console, query: str, strategy: SearchStrategy, results: SearchResultT
 ) -> None:
-    shown = results[:10]
+    shown = results[:4]
     table = Table(
         title=(
             f"{query} · {type(strategy).__name__} "
@@ -26,12 +47,16 @@ def print_search_table(
 def main() -> None:
     console = Console()
 
-    queries = ["fortnite"]
     strategies = [SubstringMatch(), TrigramWordMatch()]
 
     # connect can build connection from envs, this is how it autobuilds
     # the db url
     with psycopg.connect() as db:
-        for query in queries:
+        # defaul is 0.6 which is pretty high for a trigram match
+        # word_similarity(fortntie, fortnite) is ~0.55
+        # SELECT word_similarity('fortntie', 'fortnite');
+        db.execute("SET pg_trgm.word_similarity_threshold = 0.5")
+
+        for query in eval_queries:
             for strat in strategies:
                 print_search_table(console, query, strat, strat.search(db, query))

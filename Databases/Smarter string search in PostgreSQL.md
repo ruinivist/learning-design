@@ -493,6 +493,7 @@ different search approaches will be tested against.
 | rare            | enderal    |           2 | rare game name                          |
 | rare            | hotzone    |           7 | rare compound term                      |
 | rare            | serotonin  |           2 | rare ordinary word                      |
+| ambiguity       | chatting   |         230 | "chetting" may rank "getting" higher   |
 | no match        | zzqvxx     |           0 | negative control                        |
 
 Then the different "matching" cases need to be covered to check if the search itself is
@@ -506,3 +507,14 @@ actual typos in them.
 | fortnite    | fortnnite | insertion              |                     2026 |
 | fortnite    | fortnire  | substitution           |                     2026 |
 | fortnite    | fortntie  | adjacent transposition |                     2026 |
+| chatting    | chatting  | exact control          |                      230 |
+| chatting    | chetting  | ambiguous substitution |                      230 |
+
+## Running some evals
+
+Look a the pg-string-search-benchmars folder. This section is is just like a devlog of sorts.
+
+- substring match should use words I feel. Results for r6 had stuff that were not r6 words.
+- where does trigram go bad? Theoretically there should be a case where a long word, having trigrams to match against should come on top even though it's not related.
+  - another is "getting" matched highly against "chetting"
+  - at the 0.5 threshold, the first four results for "chetting" concern "getting"; the first title containing "chatting" is fifth.
