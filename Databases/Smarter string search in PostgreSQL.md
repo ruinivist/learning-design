@@ -493,7 +493,7 @@ different search approaches will be tested against.
 | rare            | enderal    |           2 | rare game name                          |
 | rare            | hotzone    |           7 | rare compound term                      |
 | rare            | serotonin  |           2 | rare ordinary word                      |
-| ambiguity       | chatting   |         230 | "chetting" may rank "getting" higher   |
+| ambiguity       | chatting   |         230 | "chetting" may rank "getting" higher    |
 | no match        | zzqvxx     |           0 | negative control                        |
 
 Then the different "matching" cases need to be covered to check if the search itself is
@@ -516,5 +516,119 @@ Look a the pg-string-search-benchmars folder. This section is is just like a dev
 
 - substring match should use words I feel. Results for r6 had stuff that were not r6 words.
 - where does trigram go bad? Theoretically there should be a case where a long word, having trigrams to match against should come on top even though it's not related.
-  - another is "getting" matched highly against "chetting"
-  - at the 0.5 threshold, the first four results for "chetting" concern "getting"; the first title containing "chatting" is fifth.
+  - another is "getting" matched highly against "chetting" and ranks higher in results.
+
+Another is this one
+
+```sql
+SELECT
+  similarity('enderal', 'enderdrachenfight'),        -- 0.238
+  word_similarity('enderal', 'enderdrachenfight');   -- 0.625
+```
+
+`similarity` would match all trigrams while `word_similarity` is allowed to choose a certain
+good stretch inside the 2nd word. Not a problem here but good to know.
+
+Another problem is that trigram search jsut won't work for cases short words.
+
+```sql
+SELECT word_similarity('hi', 'ho');  -- 0.333 this is just rejected at the 0.5 threshold
+SELECT word_similarity('wow', 'woof meow meow woof');  -- 0.75
+```
+
+this causes the tail to be noisy even though exact ones match come first.
+
+There CAN be cases where a non exact match ranks higher as well
+
+```sql
+SELECT
+  word_similarity('dota', 'easydota') AS exact_substring,
+  word_similarity('dota', 'flota do') AS no_exact_substring;
+```
+
+So in short, similarity is just bad as strings to long, and word sim can have a rank issue as well.
+
+There's also "strict_word_similarity", specially for cases as above, this does not allow
+word sim to cross word boundaries.
+
+If you bake in the assumption that people are definitely searching across words then this
+last one seems ideal but see this.
+
+| Query      |                    Word matching | Strict matching |
+| ---------- | -------------------------------: | --------------: |
+| `chetting` |  1 of top 10 contains `chatting` |     9 of top 10 |
+| `fortntie` | 10 of top 10 contains `fortnite` |  0 of 3 results |
+| `enderal`  |                    85 candidates |   23 candidates |
+
+```sql
+SELECT
+  word_similarity('fortntie', 'fortnite')        AS word_score,   -- 0.556
+  strict_word_similarity('fortntie', 'fortnite') AS strict_score; -- 0.385
+```
+
+Apparently that swap disrupts multiple trigrams.
+
+> a swapped pair is "harder" to solve in general, even with say edit distance which will
+> be 2 for this; even though distributions on typos would def have a higher conc of swapped
+> pairs
+
+## trigrams as only a first pass candidate filter
+
+For fuzzy/typo-tolerant, using trigrams to filer candidates on some low enough threshold, and
+then applying a more complicated/slower algorithm that you could not have applied as a whole
+is a hybrid approach of sorts.
+
+```sql
+EXPLAIN (ANALYSE, BUFFERS)
+SELECT id, title
+FROM streams
+WHERE 'chetting' <% lower(title)
+ORDER BY (
+    SELECT min(levenshtein('chetting', word))
+    FROM regexp_split_to_table(
+        lower(title), '[^[:alnum:]]+'
+    ) AS words(word)
+    WHERE word <> ''
+), word_similarity('chetting', lower(title)) DESC, id
+```
+
+That first `WHERE 'chetting' <% lower(title)` does a "is this within threshold"
+then on the filtered ones we apply the two way sorting.
+
+## Leaving it to the pros
+
+Pg has solutions for such full text search and does a reasonable complicated transformtion for
+allowing efficient searching on text.
+
+> Refer https://www.postgresql.org/docs/18/textsearch-controls.html
+
+At a high level, both document and the query into the same normalized vocabulary, then match those normalized terms. The idea is similar to vector embeddings and similarities we run there but this is not vector embeddings.
+
+```
+Document:
+"The cats were running on mats"
+
+        ↓ to_tsvector('english', ...)
+
+'cat':2 'mat':6 'run':4
+```
+
+Pg drops the non entity bits like "were" and "on" and normalises too for example cats -> cat.
+The number that follows is just the position in the sentence.
+
+ChatGPT summarised how it works as this
+
+```text
+1. Linguistic processing
+   raw text → lexemes
+   tokenization, stemming, synonyms, stop words
+
+2. Query language
+   user text → Boolean/phrase expression
+
+3. Retrieval
+   GIN index finds matching documents
+
+4. Ranking
+   ts_rank / ts_rank_cd sorts the matches
+```

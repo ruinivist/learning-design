@@ -49,7 +49,12 @@ def print_search_table(
 def main() -> None:
     console = Console()
 
-    strategies = [SubstringMatch(), TrigramWordMatch(), TrigramStrictWordMatch()]
+    strategies = [
+        TrigramWordMatch(),
+        TrigramStrictWordMatch(),
+        TrigramLevHybrid(),
+        FullTextMatch(),
+    ]
 
     # connect can build connection from envs, this is how it autobuilds
     # the db url
@@ -60,6 +65,6 @@ def main() -> None:
         db.execute("SET pg_trgm.word_similarity_threshold = 0.5")
         db.execute("SET pg_trgm.strict_word_similarity_threshold = 0.5")
 
-        for query in (sys.argv[1:] or eval_queries):
+        for query in sys.argv[1:] or eval_queries:
             for strat in strategies:
                 print_search_table(console, query, strat, strat.search(db, query))

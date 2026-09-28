@@ -44,6 +44,7 @@ class TrigramWordMatch(SearchStrategy):
     """
 
     def search(self, db: psycopg.Connection, query: str) -> list[tuple[str, str]]:
+        query = query.lower()
         # % is doubled here for escaping
         return db.execute(
             """
@@ -52,7 +53,7 @@ class TrigramWordMatch(SearchStrategy):
             WHERE %s <%% lower(title)
             ORDER BY word_similarity(%s, lower(title)) DESC, id
             """,
-            (f"{query.lower()}", f"{query.lower()}"),
+            (query, query),
         ).fetchall()
 
 
@@ -77,6 +78,10 @@ class TrigramLevHybrid(SearchStrategy):
 
     def search(self, db: psycopg.Connection, query: str) -> SearchResultT:
         query = query.lower()
+        # 1. that subquery regexp_split_to_table(lower(title), '[^[:alnum:]]+')
+        # is to split title into words and then it takes a min over all comparisons
+        # 2. that as words(word) is as {table name}({column name}), I could've written
+        # simple "as word" too since just one col and words isn't referenced
         return db.execute(
             """
             SELECT id, title
@@ -91,4 +96,23 @@ class TrigramLevHybrid(SearchStrategy):
             ), word_similarity(%s, lower(title)) DESC, id
             """,
             (query, query, query),
+        ).fetchall()
+
+
+class FullTextMatch(SearchStrategy):
+    """Rank word matches using PostgreSQL full-text search."""
+
+    def search(self, db: psycopg.Connection, query: str) -> SearchResultT:
+        return db.execute(
+            """
+            SELECT id, title
+            FROM streams
+            WHERE to_tsvector('simple', title)
+                  @@ plainto_tsquery('simple', %s)
+            ORDER BY ts_rank(
+                to_tsvector('simple', title),
+                plainto_tsquery('simple', %s)
+            ) DESC, id
+            """,
+            (query, query),
         ).fetchall()
