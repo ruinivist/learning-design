@@ -70,3 +70,25 @@ class TrigramStrictWordMatch(SearchStrategy):
             """,
             (query, query),
         ).fetchall()
+
+
+class TrigramLevHybrid(SearchStrategy):
+    """Rank trigram candidates by distance to their closest word."""
+
+    def search(self, db: psycopg.Connection, query: str) -> SearchResultT:
+        query = query.lower()
+        return db.execute(
+            """
+            SELECT id, title
+            FROM streams
+            WHERE %s <%% lower(title)
+            ORDER BY (
+                SELECT min(levenshtein(%s, word))
+                FROM regexp_split_to_table(
+                    lower(title), '[^[:alnum:]]+'
+                ) AS words(word)
+                WHERE word <> ''
+            ), word_similarity(%s, lower(title)) DESC, id
+            """,
+            (query, query, query),
+        ).fetchall()
