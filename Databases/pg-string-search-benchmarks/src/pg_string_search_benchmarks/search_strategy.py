@@ -14,7 +14,7 @@ class SearchStrategy(ABC):
 
 
 class SubstringMatch(SearchStrategy):
-    """Return unordered, case-insensitive substring matches."""
+    """Return case-insensitive substring matches."""
 
     def search(self, db: psycopg.Connection, query: str) -> SearchResultT:
         return db.execute(
@@ -22,6 +22,8 @@ class SubstringMatch(SearchStrategy):
             SELECT id, title
             FROM streams
             WHERE lower(title) LIKE %s
+            ORDER BY id
+            LIMIT 100
             """,
             (f"%{query.lower()}%",),
         ).fetchall()
@@ -52,6 +54,7 @@ class TrigramWordMatch(SearchStrategy):
             FROM streams
             WHERE %s <%% lower(title)
             ORDER BY word_similarity(%s, lower(title)) DESC, id
+            LIMIT 100
             """,
             (query, query),
         ).fetchall()
@@ -68,6 +71,7 @@ class TrigramStrictWordMatch(SearchStrategy):
             FROM streams
             WHERE %s <<%% lower(title)
             ORDER BY strict_word_similarity(%s, lower(title)) DESC, id
+            LIMIT 100
             """,
             (query, query),
         ).fetchall()
@@ -94,6 +98,7 @@ class TrigramLevHybrid(SearchStrategy):
                 ) AS words(word)
                 WHERE word <> ''
             ), word_similarity(%s, lower(title)) DESC, id
+            LIMIT 100
             """,
             (query, query, query),
         ).fetchall()
@@ -113,6 +118,7 @@ class FullTextMatch(SearchStrategy):
                 to_tsvector('simple', title),
                 plainto_tsquery('simple', %s)
             ) DESC, id
+            LIMIT 100
             """,
             (query, query),
         ).fetchall()
