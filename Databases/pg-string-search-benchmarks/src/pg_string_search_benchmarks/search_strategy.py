@@ -116,3 +116,37 @@ class FullTextMatch(SearchStrategy):
             """,
             (query, query),
         ).fetchall()
+
+
+class VocabCorrectedFTS(SearchStrategy):
+    """Search with the five closest vocabulary words in candidate order.
+    The correction logic is to get candidates via trigram filtering and then
+    ranking by minimum lev distance then usages for same lev"""
+
+    def search(self, db: psycopg.Connection, query: str) -> SearchResultT:
+        query = query.lower()
+        corrections = db.execute(
+            """
+            SELECT word
+            FROM search_words
+            WHERE %s <%% word
+            ORDER BY levenshtein(%s, word),
+                     ndoc DESC,
+                     word
+            LIMIT 5
+            """,
+            (query, query),
+        ).fetchall()
+        if not corrections:
+            return []
+
+        # we should do this all in one db query instead of multiple but fine for now
+        results: SearchResultT = []
+        seen: set[str] = set()
+        fts = FullTextMatch()
+        for (word,) in corrections:
+            for match in fts.search(db, word):
+                if match[0] not in seen:
+                    seen.add(match[0])
+                    results.append(match)
+        return results

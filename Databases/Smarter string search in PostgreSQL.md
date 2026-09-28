@@ -632,3 +632,113 @@ ChatGPT summarised how it works as this
 4. Ranking
    ts_rank / ts_rank_cd sorts the matches
 ```
+
+Now this whole pipeline seems excellent, except this is not at all fuzzy or typo tolerant.
+Can we do better? If only it did fuzzy search on the tokens it generated, it could almost
+be perfect.
+
+## The bright idea
+
+One pg makes tokens of all stream titles, can I then trigram match my query against the tokens
+to "guess" what typo was made and then use FTS using the corrected tokens.
+
+At an initial note, this seems pretty good.
+
+I put all tokens, doc count pairs in a table and then try to find "chet" in them
+
+```sql
+SELECT word, ndoc, similarity('chet', word) AS score
+FROM search_words
+WHERE word % 'chet' AND similarity('chet', word) > 0.5
+ORDER BY ndoc DESC
+LIMIT 10;
+```
+
+"chat" was not there at all and apparently similarity is just 0.25, I can use word_sim but that's
+just slightly better.
+
+Note that event "chet" is something that exists in the titles, Iw ant a combination of ndoc,
+fuzzy + lev and then fts on that. Though this makes it hard to search for your actual query
+as something popular would dominate.
+
+```sql
+SELECT word, ndoc,
+       levenshtein('fortntie', word) AS edits,
+       similarity('fortntie', word) AS trigram
+FROM search_words
+WHERE word % 'fortntie'
+ORDER BY edits, trigram DESC, ndoc DESC
+LIMIT 10;
+```
+
+| word      | ndoc | edits | trigram    |
+| --------- | ---- | ----- | ---------- |
+| fortnie   | 2    | 1     | 0.54545456 |
+| fortnit   | 3    | 2     | 0.41666666 |
+| fortnite  | 2009 | 2     | 0.3846154  |
+| fortneit  | 1    | 2     | 0.3846154  |
+| fortnlte  | 1    | 2     | 0.3846154  |
+| fortniee  | 1    | 2     | 0.3846154  |
+| fortnire  | 1    | 2     | 0.3846154  |
+| fortnait  | 1    | 2     | 0.3846154  |
+| fortnitee | 3    | 2     | 0.35714287 |
+| fortite   | 1    | 2     | 0.30769232 |
+
+Goes to show that we should use ndoc, even at the cost of not showing what was searched for exactly. A more popular term is search more anyways, for exact search we can have Google like semantics of quoting the "search term".
+
+Codex made me a "divined score" computed as this
+
+```sql
+SELECT word, ndoc,
+       levenshtein('fortntie', word) AS edits,
+       similarity('fortntie', word) AS trigram,
+       ln(ndoc + 1) - 2 * levenshtein('fortntie', word) AS score
+FROM search_words
+WHERE word % 'fortntie'
+ORDER BY score DESC, trigram DESC
+LIMIT 10;
+```
+
+I think it's just plain bad in the sense that it cannot be justified globally, at best heuristic
+that I have no idea when it breaks.
+
+| word      | ndoc | edits | trigram    | score               |
+| --------- | ---- | ----- | ---------- | ------------------- |
+| fortnite  | 2009 | 2     | 0.3846154  | 3.6058900010531216  |
+| fortnie   | 2    | 1     | 0.54545456 | -0.9013877113318902 |
+| fortune   | 138  | 3     | 0.30769232 | -1.0655260668693085 |
+| for       | 2664 | 5     | 0.3        | -2.1120406634000553 |
+| fortnit   | 3    | 2     | 0.41666666 | -2.613705638880109  |
+| fortnitee | 3    | 2     | 0.35714287 | -2.613705638880109  |
+| fort      | 191  | 4     | 0.4        | -2.7425046279722185 |
+| fortnlte  | 1    | 2     | 0.3846154  | -3.3068528194400546 |
+| fortnire  | 1    | 2     | 0.3846154  | -3.3068528194400546 |
+| fortniee  | 1    | 2     | 0.3846154  | -3.3068528194400546 |
+
+the claim of a high score seems to be due to the disproportionate ndoc for something with a
+very low lev enough distance. The weighing too is a bit arbitary.
+
+The 0.38 on the correct one seems too low, I noticed that using word_similarity again is much
+better ( 0.55 score, same as fortnie ), so I'll use that but I do need to cover how exactly
+that word sim works.
+
+This as the search strategy => filter using trigrams, pick min lev, ndocs to tiebreak and then
+send the first one to FTS, breaks for "fortntie" as it matches "fortnie" with 1 lev idst.
+
+Seems like I would really need to do one of these
+
+1. define a heuristic that takes ndoc into account as well always, instead of just for tie break
+2. do a union of top k in the ranked corrected vocab.
+
+At this point it's very much a design choice really, if we want the search to oppose and autofix
+or still match the typo word if there is one in title exactly. I think later, systems should
+not be needlessly smart.
+
+> also a full FTS search would be rank repetitions of the same word higher
+> what I got was titles that had fortnite twice or thrice.
+
+What I had to do to fix was instead of "or"ing corrected terms, ensure the ranks are not
+done in cross, the results from the first one should be first.
+
+With this, the typo term comes first as we've decided it should, then the double usages rank
+next which again is fair.

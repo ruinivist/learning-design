@@ -50,10 +50,8 @@ def main() -> None:
     console = Console()
 
     strategies = [
-        TrigramWordMatch(),
-        TrigramStrictWordMatch(),
         TrigramLevHybrid(),
-        FullTextMatch(),
+        VocabCorrectedFTS(),
     ]
 
     # connect can build connection from envs, this is how it autobuilds
