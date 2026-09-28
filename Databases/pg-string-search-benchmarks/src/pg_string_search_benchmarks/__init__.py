@@ -1,4 +1,6 @@
 import sys
+from statistics import mean, median
+from time import perf_counter
 
 import psycopg
 from rich.console import Console
@@ -46,6 +48,39 @@ def print_search_table(
     console.print(table)
 
 
+def run_benchmarks(
+    db: psycopg.Connection,
+    console: Console,
+    strategies: list[SearchStrategy],
+    queries: list[str],
+) -> None:
+    timings = {strat: [] for strat in strategies}
+    for query in queries:
+        for strat in strategies:
+            print_search_table(console, query, strat, strat.search(db, query))
+            samples = []
+            for _ in range(10):
+                start = perf_counter()
+                strat.search(db, query)
+                samples.append((perf_counter() - start) * 1000)
+            timings[strat].append((query, median(samples)))
+
+    summary = Table(title="Warm search latency (10 runs/query; mean of medians)")
+    summary.add_column("Strategy")
+    summary.add_column("Avg (ms)", justify="right")
+    summary.add_column("Slowest query")
+    summary.add_column("Slowest (ms)", justify="right")
+    for strat, query_timings in timings.items():
+        slowest_query, slowest_ms = max(query_timings, key=lambda item: item[1])
+        summary.add_row(
+            type(strat).__name__,
+            f"{mean(ms for _, ms in query_timings):.2f}",
+            slowest_query,
+            f"{slowest_ms:.2f}",
+        )
+    console.print(summary)
+
+
 def main() -> None:
     console = Console()
 
@@ -63,6 +98,4 @@ def main() -> None:
         db.execute("SET pg_trgm.word_similarity_threshold = 0.5")
         db.execute("SET pg_trgm.strict_word_similarity_threshold = 0.5")
 
-        for query in sys.argv[1:] or eval_queries:
-            for strat in strategies:
-                print_search_table(console, query, strat, strat.search(db, query))
+        run_benchmarks(db, console, strategies, sys.argv[1:] or eval_queries)
