@@ -131,28 +131,32 @@ class VocabCorrectedFTS(SearchStrategy):
 
     def search(self, db: psycopg.Connection, query: str) -> SearchResultT:
         query = query.lower()
-        corrections = db.execute(
+        return db.execute(
             """
-            SELECT word
-            FROM search_words
-            WHERE %s <%% word
-            ORDER BY levenshtein(%s, word),
-                     ndoc DESC,
-                     word
-            LIMIT 5
+            WITH corrections AS (
+                SELECT word, ndoc, levenshtein(%s, word) AS edits
+                FROM search_words
+                WHERE %s <%% word
+                ORDER BY edits, ndoc DESC, word
+                LIMIT 5
+            ), first_matches AS (
+                SELECT DISTINCT ON (streams.id)
+                    streams.id, streams.title,
+                    corrections.edits, corrections.ndoc, corrections.word,
+                    ts_rank(
+                        to_tsvector('simple', streams.title),
+                        plainto_tsquery('simple', corrections.word)
+                    ) AS rank
+                FROM corrections
+                JOIN streams ON to_tsvector('simple', streams.title)
+                    @@ plainto_tsquery('simple', corrections.word)
+                ORDER BY streams.id, corrections.edits,
+                         corrections.ndoc DESC, corrections.word
+            )
+            SELECT id, title
+            FROM first_matches
+            ORDER BY edits, ndoc DESC, word, rank DESC, id
+            LIMIT 100
             """,
             (query, query),
         ).fetchall()
-        if not corrections:
-            return []
-
-        # we should do this all in one db query instead of multiple but fine for now
-        results: SearchResultT = []
-        seen: set[str] = set()
-        fts = FullTextMatch()
-        for (word,) in corrections:
-            for match in fts.search(db, word):
-                if match[0] not in seen:
-                    seen.add(match[0])
-                    results.append(match)
-        return results
