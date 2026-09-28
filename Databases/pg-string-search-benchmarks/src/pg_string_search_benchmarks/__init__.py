@@ -1,3 +1,5 @@
+import sys
+
 import psycopg
 from rich.console import Console
 from rich.table import Table
@@ -47,7 +49,7 @@ def print_search_table(
 def main() -> None:
     console = Console()
 
-    strategies = [SubstringMatch(), TrigramWordMatch()]
+    strategies = [SubstringMatch(), TrigramWordMatch(), TrigramStrictWordMatch()]
 
     # connect can build connection from envs, this is how it autobuilds
     # the db url
@@ -56,7 +58,8 @@ def main() -> None:
         # word_similarity(fortntie, fortnite) is ~0.55
         # SELECT word_similarity('fortntie', 'fortnite');
         db.execute("SET pg_trgm.word_similarity_threshold = 0.5")
+        db.execute("SET pg_trgm.strict_word_similarity_threshold = 0.5")
 
-        for query in eval_queries:
+        for query in (sys.argv[1:] or eval_queries):
             for strat in strategies:
                 print_search_table(console, query, strat, strat.search(db, query))

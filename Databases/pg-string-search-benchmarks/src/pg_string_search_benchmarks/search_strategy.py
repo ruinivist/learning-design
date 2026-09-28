@@ -30,7 +30,7 @@ class SubstringMatch(SearchStrategy):
 class TrigramWordMatch(SearchStrategy):
     """
     This'll use pg_trgm and and word_similarity function to rank based on scores
-    Uses default threshold of 0.6
+    Uses the connection's pg_trgm.word_similarity_threshold
     > SHOW pg_trgm.word_similarity_threshold`
 
     What are trigrams? You pad with two spaces at start and one at end
@@ -50,7 +50,23 @@ class TrigramWordMatch(SearchStrategy):
             SELECT id, title
             FROM streams
             WHERE %s <%% lower(title)
-            ORDER BY word_similarity(%s, lower(title)) DESC
+            ORDER BY word_similarity(%s, lower(title)) DESC, id
             """,
             (f"{query.lower()}", f"{query.lower()}"),
+        ).fetchall()
+
+
+class TrigramStrictWordMatch(SearchStrategy):
+    """Rank trigram matches whose matched extent follows word boundaries."""
+
+    def search(self, db: psycopg.Connection, query: str) -> SearchResultT:
+        query = query.lower()
+        return db.execute(
+            """
+            SELECT id, title
+            FROM streams
+            WHERE %s <<%% lower(title)
+            ORDER BY strict_word_similarity(%s, lower(title)) DESC, id
+            """,
+            (query, query),
         ).fetchall()
