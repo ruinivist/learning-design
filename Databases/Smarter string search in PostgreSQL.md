@@ -742,3 +742,12 @@ done in cross, the results from the first one should be first.
 
 With this, the typo term comes first as we've decided it should, then the double usages rank
 next which again is fair.
+
+## perf
+
+| Strategy  | What PostgreSQL did                                                                     | Execution |
+| --------- | --------------------------------------------------------------------------------------- | --------: |
+| Hybrid    | Found 2,134 titles, then split each title into words to calculate edit distance         | 28\.95 ms |
+| Corrected | Found 70 vocabulary candidates, kept five, then used the full text index to find titles |  9\.60 ms |
+
+I'm only comparing the hybrid vs vocab corrected on since those only those two were good enough.
