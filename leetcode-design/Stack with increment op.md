@@ -117,3 +117,11 @@ class CustomStack:
         if i >= 0:
             self.inc[i] += val
 ```
+
+Note that there is a minor improvement possible where I don't store a 0 in snap if it's already 0 ( from init ) but rather not make it ugly.
+
+Key things:
+
+- no duplicates across snaps
+- only changed elems iterated over in a snap
+- supports time semantics ( not tested in lc but would work out of the box here )
