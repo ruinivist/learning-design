@@ -32,6 +32,23 @@ limiter = RateLimiter(policy)
 limiter.check(client_id="abc", endpoint="/users")
 ```
 
+Both policies accept an optional, keyword-only `clock` callable at construction.
+It returns nondecreasing integer milliseconds; the default uses
+`time.monotonic_ns()`. Each policy stores its clock and reads it during `check()`.
+Tests can control time without sleeping:
+
+```python
+now_ms = 0
+policy = SlidingWindowPolicy(limit=1, window_ms=1000, clock=lambda: now_ms)
+assert policy.check("abc", "/users").allowed
+assert not policy.check("abc", "/users").allowed
+now_ms = 1001
+assert policy.check("abc", "/users").allowed
+```
+
+`TokenBucketPolicy(capacity=1, refill_rate=1, clock=lambda: now_ms)` accepts
+the same clock argument.
+
 Each request follows this path:
 
 ```text
@@ -57,9 +74,10 @@ RateLimiter
 Caller
 ```
 
-A new policy can introduce its own constructor arguments while keeping the
-same `check(client_id, endpoint)` interface. Policy settings stay fixed for
-each limiter instance.
+A new policy inherits from `RateLimitPolicy` and implements its abstract
+`active_keys` property and `check(client_id, endpoint)` method. Python prevents
+instantiation of the base class or incomplete subclasses. Policies can introduce
+their own constructor arguments; settings stay fixed for each limiter instance.
 
 `stats()` reports the policy class name in `strategy`, along with
 `total_allowed`, `total_rejected`, and `active_keys`. Each configured policy
@@ -75,7 +93,7 @@ owns mutable request state; use a separate policy instance for each limiter.
                  |
                  | holds a policy
                  v
-          RateLimitPolicy            ← strategy interface
+          RateLimitPolicy            ← abstract strategy base class
           check(...) → Decision
                  ^
                  |

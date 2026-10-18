@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 import bisect
 import math
 import threading
 import time
-from typing import Protocol, TypedDict, Tuple
+from typing import Callable, TypedDict, Tuple
 
 # (client id, endpoint)
 RateLimitKey = Tuple[str, str]
@@ -25,15 +26,22 @@ class StatsDict(TypedDict):
     active_keys: int
 
 
+def _now_ms() -> int:
+    # a mono clock does not go back
+    return time.monotonic_ns() // 1_000_000
+
+
 # ---------------------------------------------------------------------------
 # Policy interface
 # ---------------------------------------------------------------------------
 
 
-class RateLimitPolicy(Protocol):
+class RateLimitPolicy(ABC):
     @property
+    @abstractmethod
     def active_keys(self) -> int: ...
 
+    @abstractmethod
     def check(
         self,
         client_id: str,
@@ -51,8 +59,14 @@ class SlidingWindowState:
     request_times: list[int] = field(default_factory=list)
 
 
-class SlidingWindowPolicy:
-    def __init__(self, limit: int, window_ms: int) -> None:
+class SlidingWindowPolicy(RateLimitPolicy):
+    def __init__(
+        self,
+        limit: int,
+        window_ms: int,
+        *,
+        clock: Callable[[], int] = _now_ms,
+    ) -> None:
         if limit <= 0:
             raise ValueError("limit must be > 0")
         if window_ms <= 0:
@@ -60,6 +74,7 @@ class SlidingWindowPolicy:
 
         self._limit = limit
         self._window_ms = window_ms
+        self._clock = clock
         self._state: dict[RateLimitKey, SlidingWindowState] = {}
 
     @property
@@ -78,7 +93,7 @@ class SlidingWindowPolicy:
             SlidingWindowState(),
         )
 
-        now = _now_ms()
+        now = self._clock()
         cutoff = now - self._window_ms
 
         # Timestamps are sorted; discard only those older than the window.
@@ -115,8 +130,14 @@ class TokenBucketState:
     last_refill_ms: int
 
 
-class TokenBucketPolicy:
-    def __init__(self, capacity: int, refill_rate: float) -> None:
+class TokenBucketPolicy(RateLimitPolicy):
+    def __init__(
+        self,
+        capacity: int,
+        refill_rate: float,
+        *,
+        clock: Callable[[], int] = _now_ms,
+    ) -> None:
         if capacity <= 0:
             raise ValueError("capacity must be > 0")
         if refill_rate <= 0 or not math.isfinite(refill_rate):
@@ -124,6 +145,7 @@ class TokenBucketPolicy:
 
         self._capacity = capacity
         self._refill_rate = refill_rate
+        self._clock = clock
         self._state: dict[RateLimitKey, TokenBucketState] = {}
 
     @property
@@ -136,7 +158,7 @@ class TokenBucketPolicy:
         endpoint: str,
     ) -> Decision:
         key = (client_id, endpoint)
-        now = _now_ms()
+        now = self._clock()
 
         state = self._state.get(key)
 
@@ -229,8 +251,3 @@ class RateLimiter:
                 "total_rejected": self._total_rejected,
                 "active_keys": self._policy.active_keys,
             }
-
-
-def _now_ms() -> int:
-    # a mono clock does not go back
-    return time.monotonic_ns() // 1_000_000
