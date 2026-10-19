@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2250" height="1840" viewBox="0 0 2250 1840" role="img" aria-labelledby="logger-title logger-desc">
+<title id="logger-title">Logger class diagram</title>
+<desc id="logger-desc">LogManager creates a hierarchy of loggers and a shared dispatcher. The dispatcher queues records and one worker delivers them through loggers to sinks. Sinks delegate formatting and implement output destinations.</desc>
+<defs>
+<marker id="open-arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto"><path d="M1 1 L11 6 L1 11" fill="none" stroke="black" stroke-width="1.5"/></marker>
+<marker id="triangle" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="16" markerHeight="16" orient="auto"><path d="M1 1 L15 8 L1 15 Z" fill="white" stroke="black" stroke-width="1.4"/></marker>
+<marker id="diamond" viewBox="0 0 20 14" refX="19" refY="7" markerWidth="20" markerHeight="14" orient="auto-start-reverse"><path d="M1 7 L10 1 L19 7 L10 13 Z" fill="black" stroke="black"/></marker>
+</defs>
+<style>text { font-family: 'DejaVu Sans', sans-serif; fill: black; font-size: 20px; } .title { font-size: 34px; font-weight: bold; } .name { font-size: 27px; font-weight: bold; } .small { font-size: 19px; } .logic { fill: #1856a6; } .data { fill: #18713a; } .contract { fill: #7435a0; } .messaging { fill: #b36313; } .edge { fill: none; stroke: black; stroke-width: 2; } .dashed { stroke-dasharray: 9 7; }</style>
+<rect width="2250" height="1840" fill="white"/>
+<text x="1125" y="54" class="title" text-anchor="middle">Logger — hierarchy and asynchronous delivery</text>
+<text x="1125" y="96" text-anchor="middle"><tspan class="logic">Blue: logic</tspan> · <tspan class="data">Green: data</tspan> · <tspan class="contract">Purple: contracts</tspan> · <tspan class="messaging">Orange: queue state</tspan></text>
+<g id="log-manager"><rect x="80" y="170" width="520" height="305" fill="white" stroke="black" stroke-width="2"/>
+<text x="340.0" y="212" text-anchor="middle" class="name logic">LogManager</text>
+<path d="M80 235 H600" class="edge"/>
+<text x="98" y="267" class="">+ root: Logger</text>
+<text x="98" y="299" class="">+ loggers: dict[str, Logger]</text>
+<text x="98" y="331" class="">+ dispatcher: Dispatcher</text>
+<text x="98" y="363" class="">+ lock: Lock</text>
+<path d="M80 387 H600" class="edge"/>
+<text x="98" y="419" class="">+ get_logger(name) → Logger</text>
+<text x="98" y="451" class="">+ flush(); shutdown()</text>
+</g>
+<g id="dispatcher"><rect x="840" y="170" width="540" height="305" fill="white" stroke="black" stroke-width="2"/>
+<text x="1110.0" y="212" text-anchor="middle" class="name logic">Dispatcher</text>
+<path d="M840 235 H1380" class="edge"/>
+<text x="858" y="267" class="messaging">+ q: Queue[(Logger, Record)]</text>
+<text x="858" y="299" class="">+ closed: bool; dropped: int</text>
+<text x="858" y="331" class="">+ thread: Thread</text>
+<path d="M840 355 H1380" class="edge"/>
+<text x="858" y="387" class="">+ submit(logger, record)</text>
+<text x="858" y="419" class="">+ flush(); shutdown()</text>
+<text x="858" y="451" class="">− _run()</text>
+</g>
+<g id="record"><rect x="1660" y="170" width="550" height="241" fill="white" stroke="black" stroke-width="2"/>
+<text x="1935.0" y="212" text-anchor="middle" class="name data">Record</text>
+<path d="M1660 235 H2210" class="edge"/>
+<text x="1678" y="267" class="">+ origin: str; level: Level {readOnly}</text>
+<text x="1678" y="299" class="">+ ts: datetime {readOnly}</text>
+<text x="1678" y="331" class="">+ msg: str; args: tuple {readOnly}</text>
+<path d="M1660 355 H2210" class="edge"/>
+<text x="1678" y="387" class="">+ message() → str</text>
+</g>
+<g id="logger"><rect x="80" y="760" width="520" height="369" fill="white" stroke="black" stroke-width="2"/>
+<text x="340.0" y="802" text-anchor="middle" class="name logic">Logger</text>
+<path d="M80 825 H600" class="edge"/>
+<text x="98" y="857" class="">+ parent: Logger [0..1]</text>
+<text x="98" y="889" class="">+ level: Level [0..1]</text>
+<text x="98" y="921" class="">+ propagate: bool</text>
+<text x="98" y="953" class="">+ sinks: tuple[Sink, ...]</text>
+<path d="M80 977 H600" class="edge"/>
+<text x="98" y="1009" class="">+ log(level, msg, *args)</text>
+<text x="98" y="1041" class="">+ effective_level() → Level</text>
+<text x="98" y="1073" class="">+ handle(record); notify(record)</text>
+<text x="98" y="1105" class="">+ attach(sink); detach(sink)</text>
+</g>
+<g id="sink"><rect x="840" y="760" width="540" height="303" fill="white" stroke="black" stroke-width="2"/>
+<text x="1110.0" y="789" text-anchor="middle" class="small">«abstract»</text>
+<text x="1110.0" y="825" text-anchor="middle" class="name contract">Sink</text>
+<path d="M840 855 H1380" class="edge"/>
+<text x="858" y="887" class="">+ level: Level</text>
+<text x="858" y="919" class="">+ formatter: Formatter</text>
+<path d="M840 943 H1380" class="edge"/>
+<text x="858" y="975" class="">+ emit(record)</text>
+<text x="858" y="1007" class="">+ write(line) {abstract}</text>
+<text x="858" y="1039" class="">+ close()</text>
+</g>
+<g id="formatter"><rect x="1660" y="760" width="550" height="151" fill="white" stroke="black" stroke-width="2"/>
+<text x="1935.0" y="789" text-anchor="middle" class="small">«abstract»</text>
+<text x="1935.0" y="825" text-anchor="middle" class="name contract">Formatter</text>
+<path d="M1660 855 H2210" class="edge"/>
+<text x="1678" y="887" class="">+ format(record) → str {abstract}</text>
+</g>
+<g id="console-sink"><rect x="80" y="1480" width="440" height="177" fill="white" stroke="black" stroke-width="2"/>
+<text x="300.0" y="1522" text-anchor="middle" class="name logic">ConsoleSink</text>
+<path d="M80 1545 H520" class="edge"/>
+<text x="98" y="1577" class="">+ stream: TextIO</text>
+<path d="M80 1601 H520" class="edge"/>
+<text x="98" y="1633" class="">+ write(line)</text>
+</g>
+<g id="file-sink"><rect x="650" y="1480" width="440" height="177" fill="white" stroke="black" stroke-width="2"/>
+<text x="870.0" y="1522" text-anchor="middle" class="name logic">FileSink</text>
+<path d="M650 1545 H1090" class="edge"/>
+<text x="668" y="1577" class="">+ file: TextIO</text>
+<path d="M650 1601 H1090" class="edge"/>
+<text x="668" y="1633" class="">+ write(line); close()</text>
+</g>
+<g id="memory-sink"><rect x="1220" y="1480" width="440" height="177" fill="white" stroke="black" stroke-width="2"/>
+<text x="1440.0" y="1522" text-anchor="middle" class="name logic">MemorySink</text>
+<path d="M1220 1545 H1660" class="edge"/>
+<text x="1238" y="1577" class="">+ lines: list[str]</text>
+<path d="M1220 1601 H1660" class="edge"/>
+<text x="1238" y="1633" class="">+ write(line)</text>
+</g>
+<g id="plain-formatter"><rect x="1720" y="1130" width="490" height="121" fill="white" stroke="black" stroke-width="2"/>
+<text x="1965.0" y="1172" text-anchor="middle" class="name logic">PlainFormatter</text>
+<path d="M1720 1195 H2210" class="edge"/>
+<text x="1738" y="1227" class="">+ format(record) → str</text>
+</g>
+<g id="json-formatter"><rect x="1720" y="1430" width="490" height="121" fill="white" stroke="black" stroke-width="2"/>
+<text x="1965.0" y="1472" text-anchor="middle" class="name logic">JsonFormatter</text>
+<path d="M1720 1495 H2210" class="edge"/>
+<text x="1738" y="1527" class="">+ format(record) → str</text>
+</g>
+<path d="M600 300 H840" class="edge" marker-start="url(#diamond)"/>
+<text x="625" y="278" class="">creates</text>
+<text x="808" y="328" class="small">1</text>
+<path d="M330 475 V760" class="edge" marker-start="url(#diamond)"/>
+<text x="350" y="620" class="">creates hierarchy</text>
+<text x="344" y="742" class="small">1..*</text>
+<path d="M500 760 V650 H1110 V475" class="edge" marker-end="url(#open-arrow)"/>
+<text x="740" y="633" class="">shared dispatcher</text>
+<text x="1127" y="511" class="small">1</text>
+<path d="M1380 310 H1660" class="edge" marker-end="url(#open-arrow)"/>
+<text x="1415" y="284" class="">queues records</text>
+<text x="1594" y="340" class="small">0..*</text>
+<path d="M80 905 H30 V700 H200 V760" class="edge" marker-end="url(#open-arrow)"/>
+<text x="45" y="680" class="small">parent [0..1]</text>
+<path d="M600 920 H840" class="edge" marker-end="url(#open-arrow)"/>
+<text x="650" y="898" class="">notifies</text>
+<text x="768" y="948" class="small">0..*</text>
+<path d="M1380 875 H1660" class="edge" marker-end="url(#open-arrow)"/>
+<text x="1430" y="852" class="">delegates</text>
+<text x="1616" y="905" class="small">1</text>
+<path d="M300 1480 V1280 H1440 V1480" class="edge"/>
+<path d="M870 1480 V1280" class="edge"/>
+<path d="M1110 1280 V1063" class="edge" marker-end="url(#triangle)"/>
+<text x="880" y="1248" class="">output destinations</text>
+<path d="M1720 1180 H1690 V1020 H2000 V911" class="edge" marker-end="url(#triangle)"/>
+<path d="M1720 1480 H1690 V1180" class="edge"/>
+<text x="1720" y="1064" class="small">output formats</text>
+<path d="M80 1790 V1740 H1390 L1410 1760 V1790 Z M1390 1740 V1760 H1410" fill="white" stroke="black" stroke-width="2"/>
+<text x="100" y="1774" class="small">One worker per manager; queued (logger, record) pairs call Logger.handle().  Selected members shown.</text>
+<text x="1660" y="1760" class="small">Hollow triangle: inherits</text>
+<text x="1660" y="1794" class="small">Filled diamond: owned lifetime</text>
+</svg>

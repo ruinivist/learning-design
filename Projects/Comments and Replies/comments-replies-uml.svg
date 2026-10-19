@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1350" viewBox="0 0 1500 1350" role="img" aria-labelledby="title desc">
+  <title id="title">Comments and replies class diagram</title>
+  <desc id="desc">CommentService stores immutable comments grouped by post and comment ID. Each comment refers to an ordered tuple of replies. A caller-supplied post_store object checks post existence. One service lock protects counters, updates, and read snapshots.</desc>
+  <defs>
+    <marker id="open-arrow" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L13 7 L1 13" fill="none" stroke="#000" stroke-width="2"/>
+    </marker>
+    <style>
+      text { font-family: 'DejaVu Sans', sans-serif; fill: #000; font-size: 20px; }
+      .heading { font-size: 31px; font-weight: bold; }
+      .name { font-size: 25px; font-weight: bold; }
+      .logic { fill: #1856a6; }
+      .data { fill: #18713a; }
+      .small { font-size: 18px; }
+      .box { fill: white; stroke: #000; stroke-width: 2; }
+      .line { fill: none; stroke: #000; stroke-width: 2; }
+      .note-link { fill: none; stroke: #000; stroke-width: 2; stroke-dasharray: 9 7; }
+    </style>
+  </defs>
+  <rect width="1500" height="1350" fill="white"/>
+  <text x="750" y="55" text-anchor="middle" class="heading">Comments and replies</text>
+  <text x="750" y="98" text-anchor="middle" xml:space="preserve"><tspan class="logic">Blue: logic</tspan><tspan> · </tspan><tspan class="data">Green: data</tspan><tspan> · Black arrows: references</tspan></text>
+
+  <!-- Service: public state and selected operations. -->
+  <g id="comment-service">
+    <rect x="60" y="170" width="760" height="390" class="box"/>
+    <path d="M60 230 H820 M60 375 H820" class="line"/>
+    <text x="440" y="210" text-anchor="middle" class="name logic">CommentService</text>
+    <text x="78" y="265">+ next_comment_id: int</text>
+    <text x="78" y="295">+ next_reply_id: int</text>
+    <text x="78" y="325">+ comments_by_post: dict[int, dict[int, Comment]]</text>
+    <text x="78" y="355">+ lock: threading.Lock</text>
+    <text x="78" y="415">+ add_comment(post_id, user_id, content): dict</text>
+    <text x="78" y="450">+ add_reply(post_id, comment_id, user_id, content): dict</text>
+    <text x="78" y="485">+ get_comments(post_id): list</text>
+    <text x="78" y="520">+ now_seconds(): float</text>
+  </g>
+
+  <!-- Object notation avoids inventing a PostStore class or interface. -->
+  <g id="post-store-object">
+    <rect x="990" y="230" width="450" height="75" class="box"/>
+    <text x="1215" y="260" text-anchor="middle" class="small">«external object»</text>
+    <text x="1215" y="289" text-anchor="middle" class="data" text-decoration="underline">post_store</text>
+  </g>
+  <path d="M820 268 H990" class="line" marker-end="url(#open-arrow)"/>
+  <text x="905" y="248" text-anchor="middle" class="small">post_store</text>
+  <text x="967" y="294" class="small">1</text>
+  <path d="M1215 305 V365" class="note-link"/>
+  <g id="post-store-note">
+    <path d="M990 365 H1418 L1440 387 V575 H990 Z" class="box"/>
+    <path d="M1418 365 V387 H1440" class="line"/>
+    <text x="1008" y="405">Caller supplies the object.</text>
+    <text x="1008" y="440">Service calls exists(post_id).</text>
+    <text x="1008" y="475">No store class or interface</text>
+    <text x="1008" y="505">is declared in this source.</text>
+    <text x="1008" y="550" class="small">External deletion is not coordinated.</text>
+  </g>
+
+  <!-- Plain associations describe references without implying exclusive lifetimes. -->
+  <path d="M385 560 V740" class="line" marker-end="url(#open-arrow)"/>
+  <text x="403" y="588" class="small">1</text>
+  <text x="403" y="650">comments_by_post</text>
+  <text x="403" y="680" class="small">grouped by post ID / comment ID</text>
+  <text x="403" y="727" class="small">0..*</text>
+
+  <g id="comment">
+    <rect x="60" y="740" width="650" height="330" class="box"/>
+    <path d="M60 825 H710 M60 1010 H710" class="line"/>
+    <text x="385" y="776" text-anchor="middle" class="name data">Comment</text>
+    <text x="385" y="807" text-anchor="middle" class="small">«dataclass» {frozen}</text>
+    <text x="78" y="860">+ id: int</text>
+    <text x="78" y="890">+ post_id: int</text>
+    <text x="78" y="920">+ user_id: str</text>
+    <text x="78" y="950">+ content: str</text>
+    <text x="78" y="980">+ created_at: float</text>
+    <text x="78" y="1048">+ to_dict(): dict</text>
+  </g>
+  <g id="reply">
+    <rect x="900" y="740" width="540" height="360" class="box"/>
+    <path d="M900 825 H1440 M900 1040 H1440" class="line"/>
+    <text x="1170" y="776" text-anchor="middle" class="name data">Reply</text>
+    <text x="1170" y="807" text-anchor="middle" class="small">«dataclass» {frozen}</text>
+    <text x="918" y="860">+ id: int</text>
+    <text x="918" y="890">+ post_id: int</text>
+    <text x="918" y="920">+ comment_id: int</text>
+    <text x="918" y="950">+ user_id: str</text>
+    <text x="918" y="980">+ content: str</text>
+    <text x="918" y="1010">+ created_at: float</text>
+    <text x="918" y="1078">+ to_dict(): dict</text>
+  </g>
+  <path d="M710 910 H900" class="line" marker-end="url(#open-arrow)"/>
+  <text x="805" y="871" text-anchor="middle">replies</text>
+  <text x="805" y="895" text-anchor="middle" class="small">{ordered}</text>
+  <text x="728" y="939" class="small">1</text>
+  <text x="845" y="939" class="small">0..*</text>
+
+  <path d="M385 1070 V1160 M1170 1100 V1160" class="note-link"/>
+  <g id="immutability-note">
+    <path d="M60 1160 H1418 L1440 1182 V1290 H60 Z" class="box"/>
+    <path d="M1418 1160 V1182 H1440" class="line"/>
+    <text x="78" y="1200">Replies are stored as a tuple. add_reply() replaces the stored Comment with a new frozen instance.</text>
+    <text x="78" y="1235">get_comments() snapshots records under the service lock, then serializes them after unlocking.</text>
+    <text x="78" y="1270">Existing snapshots retain their original records; callers receive fresh dictionaries and lists.</text>
+  </g>
+  <text x="750" y="1325" text-anchor="middle" class="small">Selected members shown · 1: one · 0..*: any number · Associations do not imply exclusive ownership</text>
+</svg>

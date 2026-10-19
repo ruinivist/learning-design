@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1400" viewBox="0 0 1500 1400" role="img" aria-labelledby="title desc">
+<title id="title">Vending machine UML class diagram</title>
+<desc id="desc">Machine delegates events to one concrete State subclass and references Item inventory. Four subclasses inherit the concrete default-reject State base. Selection commits a sale before the dispensing acknowledgement. There is no synchronization.</desc>
+<defs><marker id="open" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto"><path d="M2 2 L12 7 L2 12" fill="none" stroke="black" stroke-width="1.5"/></marker><marker id="triangle" markerWidth="17" markerHeight="17" refX="15" refY="8" orient="auto"><path d="M1 1 L15 8 L1 15 Z" fill="white" stroke="black" stroke-width="1.3"/></marker></defs>
+<rect width="100%" height="100%" fill="white"/><g font-family="DejaVu Sans, sans-serif" fill="black">
+<text x="750" y="43" font-size="31" fill="black" text-anchor="middle" font-weight="bold">Vending machine — UML class diagram</text>
+<text x="750" y="77" font-size="21" fill="black" text-anchor="middle">Blue: logic     Green: data     Purple: event contract</text>
+<g id="class-Machine"><rect x="60" y="120" width="740" height="366" fill="white" stroke="black" stroke-width="2"/>
+<text x="430.0" y="155" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">Machine</text>
+<path d="M60 172 H800" fill="none" stroke="black" stroke-width="2"/>
+<text x="78" y="202" font-size="20" fill="black" text-anchor="start">+ items: dict[str, Item]</text>
+<text x="78" y="232" font-size="20" fill="black" text-anchor="start">+ coins: Counter[Decimal]</text>
+<text x="78" y="262" font-size="20" fill="black" text-anchor="start">+ inserted: Counter[Decimal]</text>
+<text x="78" y="292" font-size="20" fill="black" text-anchor="start">+ balance: Decimal {readOnly}</text>
+<path d="M60 314 H800" fill="none" stroke="black" stroke-width="2"/>
+<text x="78" y="344" font-size="20" fill="black" text-anchor="start">+ insert(coin: Decimal): None</text>
+<text x="78" y="374" font-size="20" fill="black" text-anchor="start">+ select(name: str): Counter[Decimal]</text>
+<text x="78" y="404" font-size="20" fill="black" text-anchor="start">+ cancel(): Counter[Decimal]</text>
+<text x="78" y="434" font-size="20" fill="black" text-anchor="start">+ dispensed(): None</text>
+<text x="78" y="464" font-size="20" fill="black" text-anchor="start">+ restock(name: str, n: int): None</text>
+</g>
+<g id="class-Item"><rect x="1040" y="140" width="400" height="186" fill="white" stroke="black" stroke-width="2"/>
+<text x="1240.0" y="175" font-size="25" fill="#18713a" text-anchor="middle" font-weight="bold">Item</text>
+<path d="M1040 192 H1440" fill="none" stroke="black" stroke-width="2"/>
+<text x="1058" y="222" font-size="20" fill="black" text-anchor="start">+ name: str</text>
+<text x="1058" y="252" font-size="20" fill="black" text-anchor="start">+ price: Decimal</text>
+<text x="1058" y="282" font-size="20" fill="black" text-anchor="start">+ count: int</text>
+</g>
+<g id="class-State"><rect x="60" y="650" width="740" height="224" fill="white" stroke="black" stroke-width="2"/>
+<text x="430.0" y="685" font-size="25" fill="#7435a0" text-anchor="middle" font-weight="bold">State</text>
+<path d="M60 702 H800" fill="none" stroke="black" stroke-width="2"/>
+<text x="78" y="732" font-size="20" fill="black" text-anchor="start">+ insert(m: Machine, coin: Decimal): None</text>
+<text x="78" y="762" font-size="20" fill="black" text-anchor="start">+ select(m: Machine, name: str): Counter[Decimal]</text>
+<text x="78" y="792" font-size="20" fill="black" text-anchor="start">+ cancel(m: Machine): Counter[Decimal]</text>
+<text x="78" y="822" font-size="20" fill="black" text-anchor="start">+ dispensed(m: Machine): None</text>
+<text x="78" y="852" font-size="20" fill="black" text-anchor="start">+ restock(m: Machine, name: str, n: int): None</text>
+</g>
+<g id="class-Idle"><rect x="60" y="1030" width="310" height="134" fill="white" stroke="black" stroke-width="2"/>
+<text x="215.0" y="1065" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">Idle</text>
+<path d="M60 1082 H370" fill="none" stroke="black" stroke-width="2"/>
+<text x="78" y="1112" font-size="20" fill="black" text-anchor="start">+ insert(m, coin)</text>
+<text x="78" y="1142" font-size="20" fill="black" text-anchor="start">+ restock(m, name, n)</text>
+</g>
+<g id="class-HasMoney"><rect x="420" y="1030" width="310" height="164" fill="white" stroke="black" stroke-width="2"/>
+<text x="575.0" y="1065" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">HasMoney</text>
+<path d="M420 1082 H730" fill="none" stroke="black" stroke-width="2"/>
+<text x="438" y="1112" font-size="20" fill="black" text-anchor="start">+ insert(m, coin)</text>
+<text x="438" y="1142" font-size="20" fill="black" text-anchor="start">+ select(m, name)</text>
+<text x="438" y="1172" font-size="20" fill="black" text-anchor="start">+ cancel(m)</text>
+</g>
+<g id="class-Dispensing"><rect x="780" y="1030" width="310" height="104" fill="white" stroke="black" stroke-width="2"/>
+<text x="935.0" y="1065" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">Dispensing</text>
+<path d="M780 1082 H1090" fill="none" stroke="black" stroke-width="2"/>
+<text x="798" y="1112" font-size="20" fill="black" text-anchor="start">+ dispensed(m)</text>
+</g>
+<g id="class-OutOfService"><rect x="1140" y="1030" width="310" height="104" fill="white" stroke="black" stroke-width="2"/>
+<text x="1295.0" y="1065" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">OutOfService</text>
+<path d="M1140 1082 H1450" fill="none" stroke="black" stroke-width="2"/>
+<text x="1158" y="1112" font-size="20" fill="black" text-anchor="start">+ restock(m, name, n)</text>
+</g>
+<path d="M800 230 H1040" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)"/>
+<text x="920" y="207" font-size="19" fill="black" text-anchor="middle">items[name]</text>
+<text x="1018" y="255" font-size="18" fill="black" text-anchor="end">0..*</text>
+<path d="M430 486 V650" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)"/>
+<text x="453" y="579" font-size="20" fill="black" text-anchor="start">current state</text>
+<text x="450" y="634" font-size="19" fill="black" text-anchor="start">1</text>
+<path d="M430 970 V874" fill="none" stroke="black" stroke-width="2" marker-end="url(#triangle)"/>
+<path d="M215 1030 V970 H1295 V1030" fill="none" stroke="black" stroke-width="2"/>
+<path d="M575 1030 V970" fill="none" stroke="black" stroke-width="2"/>
+<path d="M935 1030 V970" fill="none" stroke="black" stroke-width="2"/>
+<text x="822" y="949" font-size="19" fill="black" text-anchor="start">inherits; only legal events overridden</text>
+<path d="M945 430 H1425 L1450 455 V790 H945 Z M1425 430 V455 H1450" fill="white" stroke="black" stroke-width="2"/>
+<text x="970" y="472" font-size="23" fill="black" text-anchor="start" font-weight="bold">State and sale boundaries</text>
+<text x="970" y="514" font-size="20" fill="black" text-anchor="start">State is a concrete base class.</text>
+<text x="970" y="549" font-size="20" fill="black" text-anchor="start">Its default methods reject events.</text>
+<text x="970" y="599" font-size="20" fill="black" text-anchor="start">select(): validate → change → commit</text>
+<text x="970" y="634" font-size="20" fill="black" text-anchor="start">Then enter Dispensing and return.</text>
+<text x="970" y="684" font-size="20" fill="black" text-anchor="start">dispensed(): acknowledge completion.</text>
+<text x="970" y="719" font-size="20" fill="black" text-anchor="start">No hardware rollback or locking.</text>
+<text x="970" y="764" font-size="20" fill="black" text-anchor="start">Helpers remain on Machine.</text>
+<path d="M945 545 H875 V590 H660 V650" fill="none" stroke="black" stroke-width="2" stroke-dasharray="9 7"/>
+<path d="M60 1250 H1425 L1450 1275 V1340 H60 Z M1425 1250 V1275 H1450" fill="white" stroke="black" stroke-width="2"/>
+<text x="85" y="1286" font-size="20" fill="black" text-anchor="start">Money: inserted coins are already in available coins; cancellation removes and returns them.</text>
+<text x="85" y="1318" font-size="20" fill="black" text-anchor="start">Change: bounded dynamic programming uses physical coin counts and minimizes coins returned.</text>
+<text x="750" y="1377" font-size="19" fill="black" text-anchor="middle">Open arrow: navigable association · Hollow triangle: inheritance · Selected members shown</text>
+</g></svg>

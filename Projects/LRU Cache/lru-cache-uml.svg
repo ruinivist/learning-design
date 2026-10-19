@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1660" height="1510" viewBox="0 0 1660 1510" role="img" aria-labelledby="title desc">
+<title id="title">Cache and eviction policy class diagram</title>
+<desc id="desc">Cache stores values and uses an injected EvictionPolicy. LRU, LFU, and FIFO inherit that contract. LRU owns a doubly linked list and indexes its nodes by key. The list points to a circular sentinel Node. Selected members are shown; no locking is implemented.</desc>
+<defs>
+<marker id="arrow" markerWidth="12" markerHeight="12" refX="11" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L11 6 L1 11" fill="none" stroke="black" stroke-width="2"/></marker>
+<marker id="inheritance" markerWidth="22" markerHeight="22" refX="21" refY="11" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L21 11 L1 21 Z" fill="white" stroke="black" stroke-width="2"/></marker>
+<marker id="composition" markerWidth="26" markerHeight="16" refX="1" refY="8" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 8 L13 1 L25 8 L13 15 Z" fill="black" stroke="black" stroke-width="2"/></marker>
+</defs>
+<style>text {font-family:'DejaVu Sans',sans-serif;fill:black;font-size:20px} .heading{font-size:31px;font-weight:bold}.name{font-size:25px;font-weight:bold}.logic{fill:#1856a6}.data{fill:#18713a}.contract{fill:#7435a0}.small{font-size:18px}.box{fill:white;stroke:black;stroke-width:2}.line{fill:none;stroke:black;stroke-width:2}</style>
+<rect width="1660" height="1510" fill="white"/>
+
+<text x="830" y="55" class="heading" text-anchor="middle">Cache · eviction policies</text>
+<text x="830" y="98" text-anchor="middle"><tspan class="logic">Blue: logic</tspan> · <tspan class="data">Green: data / cache</tspan> · <tspan class="contract">Purple: contract</tspan></text>
+<g id="cache"><rect class="box" x="40" y="170" width="620" height="250"/>
+<text x="350.0" y="210" class="name data" text-anchor="middle">Cache&lt;K: Hashable, V&gt;</text>
+<path class="line" d="M40 232 H660" />
+<text x="58" y="267" class="" text-anchor="start">+ capacity: int</text>
+<text x="58" y="297" class="" text-anchor="start">+ store: dict&lt;K, V&gt;</text>
+<path class="line" d="M40 312 H660" />
+<text x="58" y="347" class="" text-anchor="start">+ get(key: K): V | None</text>
+<text x="58" y="377" class="" text-anchor="start">+ put(key: K, value: V): None</text>
+</g>
+<g id="policy"><rect class="box" x="900" y="170" width="720" height="250"/>
+<text x="1260.0" y="201" class="small contract" text-anchor="middle">«abstract»</text>
+<text x="1260.0" y="234" class="name contract" text-anchor="middle">EvictionPolicy&lt;K&gt;</text>
+<path class="line" d="M900 254 H1620" />
+<text x="918" y="289" class="" text-anchor="start">+ on_access(key: K): None {abstract}</text>
+<text x="918" y="319" class="" text-anchor="start">+ on_insert(key: K): None {abstract}</text>
+<text x="918" y="349" class="" text-anchor="start">+ evict(): K {abstract}</text>
+</g>
+<path class="line" d="M660 295 H900" marker-end="url(#arrow)"/>
+<text x="780" y="265" class="" text-anchor="middle">policy</text>
+<text x="875" y="322" class="small" text-anchor="start">1</text>
+<path class="line" d="M300 660 V520 H1430 V660" />
+<path class="line" d="M895 660 V520" />
+<path class="line" d="M1260 520 V420" marker-end="url(#inheritance)"/>
+<g id="lru"><rect class="box" x="40" y="660" width="520" height="250"/>
+<text x="300.0" y="700" class="name logic" text-anchor="middle">LRU&lt;K&gt;</text>
+<path class="line" d="M40 722 H560" />
+<text x="58" y="757" class="" text-anchor="start">+ to_node: dict&lt;K, Node&gt;</text>
+<path class="line" d="M40 772 H560" />
+<text x="58" y="807" class="" text-anchor="start">+ on_access(key: K): None</text>
+<text x="58" y="837" class="" text-anchor="start">+ on_insert(key: K): None</text>
+<text x="58" y="867" class="" text-anchor="start">+ evict(): K</text>
+</g>
+<g id="lfu"><rect class="box" x="610" y="660" width="570" height="250"/>
+<text x="895.0" y="700" class="name logic" text-anchor="middle">LFU&lt;K&gt;</text>
+<path class="line" d="M610 722 H1180" />
+<text x="628" y="757" class="" text-anchor="start">+ min_freq: int</text>
+<text x="628" y="787" class="" text-anchor="start">+ freqs: dict&lt;K, int&gt;</text>
+<text x="628" y="817" class="" text-anchor="start">+ with_freqs: dict&lt;int, set&lt;K&gt;&gt;</text>
+</g>
+<g id="fifo"><rect class="box" x="1240" y="660" width="380" height="250"/>
+<text x="1430.0" y="700" class="name logic" text-anchor="middle">FIFO&lt;K&gt;</text>
+<path class="line" d="M1240 722 H1620" />
+<text x="1258" y="757" class="" text-anchor="start">+ q: deque&lt;K&gt;</text>
+<path class="line" d="M1240 772 H1620" />
+<text x="1258" y="807" class="" text-anchor="start">+ on_access(key: K): None</text>
+<text x="1258" y="837" class="" text-anchor="start">+ on_insert(key: K): None</text>
+<text x="1258" y="867" class="" text-anchor="start">+ evict(): K</text>
+</g>
+<path class="line" d="M300 910 V1090" marker-start="url(#composition)"/>
+<text x="320" y="958" class="small" text-anchor="start">1</text>
+<text x="320" y="1038" class="" text-anchor="start">list</text>
+<text x="320" y="1072" class="small" text-anchor="start">1</text>
+<path class="line" d="M490 910 V990 H940 V1090" marker-end="url(#arrow)"/>
+<text x="730" y="970" class="" text-anchor="middle">indexes keys → nodes</text>
+<text x="957" y="1072" class="small" text-anchor="start">0..*</text>
+<g id="dllist"><rect class="box" x="40" y="1090" width="520" height="250"/>
+<text x="300.0" y="1130" class="name logic" text-anchor="middle">DLList</text>
+<path class="line" d="M40 1152 H560" />
+<text x="58" y="1187" class="" text-anchor="start">+ root: Node</text>
+<path class="line" d="M40 1202 H560" />
+<text x="58" y="1237" class="" text-anchor="start">+ delete(node: Node)</text>
+<text x="58" y="1267" class="" text-anchor="start">+ push_front(node: Node)</text>
+<text x="58" y="1297" class="" text-anchor="start">+ pop_back(): Node</text>
+</g>
+<g id="node"><rect class="box" x="700" y="1090" width="480" height="250"/>
+<text x="940.0" y="1130" class="name data" text-anchor="middle">Node</text>
+<path class="line" d="M700 1152 H1180" />
+<text x="718" y="1187" class="" text-anchor="start">+ data: Any</text>
+<text x="718" y="1217" class="" text-anchor="start">+ prev: Node | None</text>
+<text x="718" y="1247" class="" text-anchor="start">+ next: Node | None</text>
+</g>
+<path class="line" d="M700 1270 H1180" />
+<text x="718" y="1307" class="small" text-anchor="start">Identity equality · dataclass(slots=True)</text>
+<path class="line" d="M560 1187 H700" marker-end="url(#arrow)"/>
+<text x="630" y="1165" class="" text-anchor="middle">root</text>
+<text x="675" y="1216" class="small" text-anchor="start">1</text>
+<g id="scope-note"><path class="box" d="M1240 1080 H1590 L1620 1110 V1330 H1240 Z"/>
+<path class="line" d="M1590 1080 V1110 H1620" />
+<text x="1258" y="1127" class="" text-anchor="start">Cache stores values;</text>
+<text x="1258" y="1157" class="" text-anchor="start">policies store keys / metadata.</text>
+<text x="1258" y="1200" class="" text-anchor="start">List links form a ring around</text>
+<text x="1258" y="1230" class="" text-anchor="start">one sentinel root.</text>
+<text x="1258" y="1273" class="" text-anchor="start">No synchronization exists.</text>
+<text x="1258" y="1308" class="small" text-anchor="start">Selected members shown.</text>
+</g>
+<path class="line" d="M1240 1205 H1180" stroke-dasharray="9 7"/>
+<text x="830" y="1410" class="small" text-anchor="middle">Hollow triangle: inheritance · filled diamond: composition · open arrow: navigable association</text>
+<text x="830" y="1444" class="small" text-anchor="middle">+ public · 1 exactly one · 0..* zero or more · read hits also update LRU / LFU state</text>
+</svg>
