@@ -1,0 +1,226 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2460" height="2460" viewBox="0 0 2460 2460" role="img" aria-labelledby="title desc">
+  <title id="title">Parking lot — UML class diagram</title>
+  <desc id="desc">Core ownership, entry and exit panels, strategy inheritance, payment template method, observers, and immutable data objects. Checkout uses one shared lot lock.</desc>
+  <defs>
+    <marker id="open" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+      <path d="M2 2 L12 7 L2 12" fill="none" stroke="black" stroke-width="1.5" />
+    </marker>
+    <marker id="triangle" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto">
+      <path d="M1 1 L16 9 L1 17 Z" fill="white" stroke="black" stroke-width="1.5" />
+    </marker>
+  </defs>
+  <rect width="100%" height="100%" fill="white" />
+  <g font-family="DejaVu Sans, sans-serif" fill="black">
+    <text x="1230" y="43" font-size="31" fill="black" text-anchor="middle" font-weight="bold">Parking lot — UML class diagram</text>
+    <text x="1230" y="79" font-size="21" fill="black" text-anchor="middle">Blue: logic     Green: data     Purple: contract</text>
+    <text x="1230" y="113" font-size="20" fill="black" text-anchor="middle">Core relationships and extension points · selected members</text>
+    <g id="entry">
+      <rect x="60" y="150" width="600" height="188" fill="white" stroke="black" stroke-width="2" />
+      <text x="360.0" y="188" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">EntryPanel</text>
+      <path d="M60 208 H660" fill="none" stroke="black" stroke-width="2" />
+      <text x="78" y="238" font-size="20" fill="black" text-anchor="start">- _lot: ParkingLot</text>
+      <text x="78" y="268" font-size="20" fill="black" text-anchor="start">- _clock: Clock</text>
+      <path d="M60 288 H660" fill="none" stroke="black" stroke-width="2" />
+      <text x="78" y="318" font-size="20" fill="black" text-anchor="start">+ park(vehicle, now=None): Ticket</text>
+    </g>
+    <g id="lot">
+      <rect x="900" y="150" width="660" height="368" fill="white" stroke="black" stroke-width="2" />
+      <text x="1230.0" y="188" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">ParkingLot</text>
+      <path d="M900 208 H1560" fill="none" stroke="black" stroke-width="2" />
+      <text x="918" y="238" font-size="20" fill="black" text-anchor="start">+ floors: tuple[Floor, ...]</text>
+      <text x="918" y="268" font-size="20" fill="black" text-anchor="start">- _allocation: AllocationStrategy</text>
+      <text x="918" y="298" font-size="20" fill="black" text-anchor="start">- _active: dict[str, Ticket]</text>
+      <text x="918" y="328" font-size="20" fill="black" text-anchor="start">- _lock: RLock</text>
+      <path d="M900 378 H1560" fill="none" stroke="black" stroke-width="2" />
+      <text x="918" y="408" font-size="20" fill="black" text-anchor="start">+ park(vehicle, now): Ticket</text>
+      <text x="918" y="438" font-size="20" fill="black" text-anchor="start">+ find_active(ticket_id): Ticket</text>
+      <text x="918" y="468" font-size="20" fill="black" text-anchor="start">+ checkout(ticket_id): context manager</text>
+      <text x="918" y="498" font-size="20" fill="black" text-anchor="start">+ release(ticket): None</text>
+      <text x="918" y="358" font-size="20" fill="black" text-anchor="start">+ free_count: int {readOnly}</text>
+    </g>
+    <g id="exit">
+      <rect x="1800" y="150" width="600" height="278" fill="white" stroke="black" stroke-width="2" />
+      <text x="2100.0" y="188" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">ExitPanel</text>
+      <path d="M1800 208 H2400" fill="none" stroke="black" stroke-width="2" />
+      <text x="1818" y="238" font-size="20" fill="black" text-anchor="start">- _lot: ParkingLot</text>
+      <text x="1818" y="268" font-size="20" fill="black" text-anchor="start">- _pricing: PricingStrategy</text>
+      <text x="1818" y="298" font-size="20" fill="black" text-anchor="start">- _payment: PaymentProcessor</text>
+      <text x="1818" y="328" font-size="20" fill="black" text-anchor="start">- _clock: Clock</text>
+      <path d="M1800 348 H2400" fill="none" stroke="black" stroke-width="2" />
+      <text x="1818" y="378" font-size="20" fill="black" text-anchor="start">+ quote(ticket_id, now=None): Decimal</text>
+      <text x="1818" y="408" font-size="20" fill="black" text-anchor="start">+ settle(ticket_id, now=None): Receipt</text>
+    </g>
+    <g id="allocation">
+      <rect x="60" y="620" width="600" height="136" fill="white" stroke="black" stroke-width="2" />
+      <text x="360.0" y="648" font-size="20" fill="#7435a0" text-anchor="middle">«abstract»</text>
+      <text x="360.0" y="686" font-size="25" fill="#7435a0" text-anchor="middle" font-weight="bold">AllocationStrategy</text>
+      <path d="M60 706 H660" fill="none" stroke="black" stroke-width="2" />
+      <text x="78" y="736" font-size="20" fill="black" text-anchor="start">+ choose(floors, vehicle): Allocation | None</text>
+    </g>
+    <g id="anyfree">
+      <rect x="60" y="900" width="600" height="108" fill="white" stroke="black" stroke-width="2" />
+      <text x="360.0" y="938" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">AnyFreeSpotAllocation</text>
+      <path d="M60 958 H660" fill="none" stroke="black" stroke-width="2" />
+      <text x="78" y="988" font-size="20" fill="black" text-anchor="start">+ choose(floors, vehicle): Allocation | None</text>
+    </g>
+    <g id="floor">
+      <rect x="900" y="680" width="660" height="248" fill="white" stroke="black" stroke-width="2" />
+      <text x="1230.0" y="718" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">Floor</text>
+      <path d="M900 738 H1560" fill="none" stroke="black" stroke-width="2" />
+      <text x="918" y="768" font-size="20" fill="black" text-anchor="start">+ id: int</text>
+      <text x="918" y="798" font-size="20" fill="black" text-anchor="start">- _spots: dict[str, Spot]</text>
+      <path d="M900 878 H1560" fill="none" stroke="black" stroke-width="2" />
+      <text x="918" y="828" font-size="20" fill="black" text-anchor="start">+ free_spots: tuple[Spot, ...] {readOnly}</text>
+      <text x="918" y="858" font-size="20" fill="black" text-anchor="start">+ counts: dict[SpotSize, int] {readOnly}</text>
+      <text x="918" y="908" font-size="20" fill="black" text-anchor="start">- _take(spot, vehicle) / _release(spot_id)</text>
+    </g>
+    <g id="spot">
+      <rect x="900" y="1090" width="660" height="278" fill="white" stroke="black" stroke-width="2" />
+      <text x="1230.0" y="1128" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">Spot</text>
+      <path d="M900 1148 H1560" fill="none" stroke="black" stroke-width="2" />
+      <text x="918" y="1178" font-size="20" fill="black" text-anchor="start">+ id: str</text>
+      <text x="918" y="1208" font-size="20" fill="black" text-anchor="start">+ size: SpotSize</text>
+      <text x="918" y="1238" font-size="20" fill="black" text-anchor="start">+ occupied_by: Vehicle | None</text>
+      <path d="M900 1288 H1560" fill="none" stroke="black" stroke-width="2" />
+      <text x="918" y="1268" font-size="20" fill="black" text-anchor="start">+ is_free: bool {readOnly}</text>
+      <text x="918" y="1318" font-size="20" fill="black" text-anchor="start">+ occupy(vehicle): None</text>
+      <text x="918" y="1348" font-size="20" fill="black" text-anchor="start">+ free(): None</text>
+    </g>
+    <g id="pricing">
+      <rect x="1800" y="620" width="600" height="136" fill="white" stroke="black" stroke-width="2" />
+      <text x="2100.0" y="648" font-size="20" fill="#7435a0" text-anchor="middle">«abstract»</text>
+      <text x="2100.0" y="686" font-size="25" fill="#7435a0" text-anchor="middle" font-weight="bold">PricingStrategy</text>
+      <path d="M1800 706 H2400" fill="none" stroke="black" stroke-width="2" />
+      <text x="1818" y="736" font-size="20" fill="black" text-anchor="start">+ price(ticket, exit_time): Decimal</text>
+    </g>
+    <g id="hourly">
+      <rect x="1800" y="870" width="600" height="218" fill="white" stroke="black" stroke-width="2" />
+      <text x="2100.0" y="908" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">HourlyPricing</text>
+      <path d="M1800 928 H2400" fill="none" stroke="black" stroke-width="2" />
+      <text x="1818" y="958" font-size="20" fill="black" text-anchor="start">+ first_hour: Decimal</text>
+      <text x="1818" y="988" font-size="20" fill="black" text-anchor="start">+ later_hour: Decimal</text>
+      <text x="1818" y="1018" font-size="20" fill="black" text-anchor="start">+ grace_minutes: int</text>
+      <path d="M1800 1038 H2400" fill="none" stroke="black" stroke-width="2" />
+      <text x="1818" y="1068" font-size="20" fill="black" text-anchor="start">+ price(ticket, exit_time): Decimal</text>
+    </g>
+    <g id="payment">
+      <rect x="1800" y="1160" width="600" height="216" fill="white" stroke="black" stroke-width="2" />
+      <text x="2100.0" y="1188" font-size="20" fill="#7435a0" text-anchor="middle">«abstract»</text>
+      <text x="2100.0" y="1226" font-size="25" fill="#7435a0" text-anchor="middle" font-weight="bold">PaymentProcessor</text>
+      <path d="M1800 1246 H2400" fill="none" stroke="black" stroke-width="2" />
+      <text x="1818" y="1276" font-size="20" fill="black" text-anchor="start">+ method: str</text>
+      <path d="M1800 1296 H2400" fill="none" stroke="black" stroke-width="2" />
+      <text x="1818" y="1326" font-size="20" fill="black" text-anchor="start">+ authorize(amount): bool {abstract}</text>
+      <text x="1818" y="1356" font-size="20" fill="black" text-anchor="start">+ charge(amount, ticket_id, now): Receipt</text>
+    </g>
+    <g id="cash">
+      <rect x="1800" y="1500" width="600" height="158" fill="white" stroke="black" stroke-width="2" />
+      <text x="2100.0" y="1538" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">CashPayment</text>
+      <path d="M1800 1558 H2400" fill="none" stroke="black" stroke-width="2" />
+      <text x="1818" y="1588" font-size="20" fill="black" text-anchor="start">+ method: str = "cash"</text>
+      <path d="M1800 1608 H2400" fill="none" stroke="black" stroke-width="2" />
+      <text x="1818" y="1638" font-size="20" fill="black" text-anchor="start">+ authorize(amount): bool</text>
+    </g>
+    <g id="subject">
+      <rect x="900" y="1510" width="660" height="246" fill="white" stroke="black" stroke-width="2" />
+      <text x="1230.0" y="1538" font-size="20" fill="#7435a0" text-anchor="middle">«abstract»</text>
+      <text x="1230.0" y="1576" font-size="25" fill="#7435a0" text-anchor="middle" font-weight="bold">Subject</text>
+      <path d="M900 1596 H1560" fill="none" stroke="black" stroke-width="2" />
+      <text x="918" y="1626" font-size="20" fill="black" text-anchor="start">- _observers: list[Observer[Self]]</text>
+      <path d="M900 1646 H1560" fill="none" stroke="black" stroke-width="2" />
+      <text x="918" y="1676" font-size="20" fill="black" text-anchor="start">+ attach(observer): None</text>
+      <text x="918" y="1706" font-size="20" fill="black" text-anchor="start">+ detach(observer): None</text>
+      <text x="918" y="1736" font-size="20" fill="black" text-anchor="start">+ notify(): None</text>
+    </g>
+    <g id="observer">
+      <rect x="1800" y="1820" width="600" height="136" fill="white" stroke="black" stroke-width="2" />
+      <text x="2100.0" y="1848" font-size="20" fill="#7435a0" text-anchor="middle">«abstract»</text>
+      <text x="2100.0" y="1886" font-size="25" fill="#7435a0" text-anchor="middle" font-weight="bold">Observer[T]</text>
+      <path d="M1800 1906 H2400" fill="none" stroke="black" stroke-width="2" />
+      <text x="1818" y="1936" font-size="20" fill="black" text-anchor="start">+ update(subject: T): None</text>
+    </g>
+    <g id="display">
+      <rect x="900" y="1880" width="660" height="218" fill="white" stroke="black" stroke-width="2" />
+      <text x="1230.0" y="1918" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">DisplayBoard</text>
+      <path d="M900 1938 H1560" fill="none" stroke="black" stroke-width="2" />
+      <text x="918" y="1968" font-size="20" fill="black" text-anchor="start">+ floor_id: int</text>
+      <text x="918" y="1998" font-size="20" fill="black" text-anchor="start">+ counts: dict[str, int]</text>
+      <path d="M900 2018 H1560" fill="none" stroke="black" stroke-width="2" />
+      <text x="918" y="2048" font-size="20" fill="black" text-anchor="start">+ update(subject: Floor): None</text>
+      <text x="918" y="2078" font-size="20" fill="black" text-anchor="start">+ render(): str</text>
+    </g>
+    <g id="ticket">
+      <rect x="60" y="1280" width="600" height="256" fill="white" stroke="black" stroke-width="2" />
+      <text x="360.0" y="1308" font-size="20" fill="#18713a" text-anchor="middle">«frozen dataclass»</text>
+      <text x="360.0" y="1346" font-size="25" fill="#18713a" text-anchor="middle" font-weight="bold">Ticket</text>
+      <path d="M60 1366 H660" fill="none" stroke="black" stroke-width="2" />
+      <text x="78" y="1396" font-size="20" fill="black" text-anchor="start">+ id: str</text>
+      <text x="78" y="1426" font-size="20" fill="black" text-anchor="start">+ spot_id: str / floor_id: int</text>
+      <text x="78" y="1456" font-size="20" fill="black" text-anchor="start">+ vehicle: Vehicle</text>
+      <text x="78" y="1486" font-size="20" fill="black" text-anchor="start">+ spot_size: SpotSize</text>
+      <text x="78" y="1516" font-size="20" fill="black" text-anchor="start">+ entry_time: datetime</text>
+    </g>
+    <g id="vehicle">
+      <rect x="60" y="1740" width="600" height="166" fill="white" stroke="black" stroke-width="2" />
+      <text x="360.0" y="1768" font-size="20" fill="#18713a" text-anchor="middle">«frozen dataclass»</text>
+      <text x="360.0" y="1806" font-size="25" fill="#18713a" text-anchor="middle" font-weight="bold">Vehicle</text>
+      <path d="M60 1826 H660" fill="none" stroke="black" stroke-width="2" />
+      <text x="78" y="1856" font-size="20" fill="black" text-anchor="start">+ plate: str</text>
+      <text x="78" y="1886" font-size="20" fill="black" text-anchor="start">+ type: VehicleType</text>
+    </g>
+    <g id="receipt">
+      <rect x="60" y="2040" width="600" height="226" fill="white" stroke="black" stroke-width="2" />
+      <text x="360.0" y="2068" font-size="20" fill="#18713a" text-anchor="middle">«frozen dataclass»</text>
+      <text x="360.0" y="2106" font-size="25" fill="#18713a" text-anchor="middle" font-weight="bold">Receipt</text>
+      <path d="M60 2126 H660" fill="none" stroke="black" stroke-width="2" />
+      <text x="78" y="2156" font-size="20" fill="black" text-anchor="start">+ ticket_id: str</text>
+      <text x="78" y="2186" font-size="20" fill="black" text-anchor="start">+ amount: Decimal</text>
+      <text x="78" y="2216" font-size="20" fill="black" text-anchor="start">+ method: str</text>
+      <text x="78" y="2246" font-size="20" fill="black" text-anchor="start">+ paid_at: datetime</text>
+    </g>
+    <path d="M660 230 H900" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)" />
+    <text x="775" y="214" font-size="19" fill="black" text-anchor="middle">uses · 1</text>
+    <path d="M1800 230 H1560" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)" />
+    <text x="1680" y="214" font-size="19" fill="black" text-anchor="middle">uses · 1</text>
+    <path d="M900 420 H740 V700 H660" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)" />
+    <text x="750" y="590" font-size="19" fill="black" text-anchor="start">allocation · 1</text>
+    <path d="M2100 428 V620" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)" />
+    <text x="2120" y="535" font-size="19" fill="black" text-anchor="start">pricing · 1</text>
+    <path d="M2400 300 H2430 V1250 H2400" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)" />
+    <text x="2421" y="1140" font-size="18" fill="black" text-anchor="end">payment · 1</text>
+    <path d="M1230 518 l12 12 l-12 12 l-12 -12 Z" fill="black" stroke="black" stroke-width="2" />
+    <path d="M1230 542 V680" fill="none" stroke="black" stroke-width="2" />
+    <text x="1254" y="561" font-size="18" fill="black" text-anchor="start">1</text>
+    <text x="1254" y="668" font-size="18" fill="black" text-anchor="start">0..*</text>
+    <text x="1255" y="620" font-size="19" fill="black" text-anchor="start">owns floors</text>
+    <path d="M1230 928 l12 12 l-12 12 l-12 -12 Z" fill="black" stroke="black" stroke-width="2" />
+    <path d="M1230 952 V1090" fill="none" stroke="black" stroke-width="2" />
+    <text x="1254" y="971" font-size="18" fill="black" text-anchor="start">1</text>
+    <text x="1254" y="1078" font-size="18" fill="black" text-anchor="start">0..*</text>
+    <text x="1255" y="1030" font-size="19" fill="black" text-anchor="start">owns spots</text>
+    <path d="M360 900 V756" fill="none" stroke="black" stroke-width="2" marker-end="url(#triangle)" />
+    <text x="382" y="840" font-size="19" fill="black" text-anchor="start">inherits</text>
+    <path d="M2100 870 V756" fill="none" stroke="black" stroke-width="2" marker-end="url(#triangle)" />
+    <text x="2122" y="830" font-size="19" fill="black" text-anchor="start">inherits</text>
+    <path d="M2100 1500 V1376" fill="none" stroke="black" stroke-width="2" marker-end="url(#triangle)" />
+    <text x="2122" y="1450" font-size="19" fill="black" text-anchor="start">inherits</text>
+    <path d="M1560 800 H1650 V1610 H1560" fill="none" stroke="black" stroke-width="2" marker-end="url(#triangle)" />
+    <text x="1665" y="1470" font-size="19" fill="black" text-anchor="start">inherits</text>
+    <path d="M1560 1990 H1660 V1920 H1800" fill="none" stroke="black" stroke-width="2" marker-end="url(#triangle)" />
+    <text x="1668" y="2018" font-size="19" fill="black" text-anchor="start">T = Floor</text>
+    <path d="M1560 1680 H1720 V1855 H1800" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)" />
+    <text x="1737" y="1788" font-size="19" fill="black" text-anchor="start">observers</text>
+    <text x="1740" y="1840" font-size="18" fill="black" text-anchor="start">0..*</text>
+    <path d="M360 1536 V1740" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)" />
+    <text x="380" y="1650" font-size="19" fill="black" text-anchor="start">vehicle · 1</text>
+    <path d="M900 1230 H760 V1810 H660" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)" />
+    <text x="680" y="1775" font-size="18" fill="black" text-anchor="start">0..1</text>
+    <path d="M900 2160 H2375 L2400 2185 V2375 H900 Z M2375 2160 V2185 H2400" fill="white" stroke="black" stroke-width="2" />
+    <text x="925" y="2198" font-size="23" fill="black" text-anchor="start" font-weight="bold">Checkout and modeling notes</text>
+    <text x="925" y="2235" font-size="20" fill="black" text-anchor="start">One shared lot lock spans lookup → price → charge → release; decline keeps the ticket active.</text>
+    <text x="925" y="2270" font-size="20" fill="black" text-anchor="start">Commit ticket + spot state before notifying displays; report observer failures independently.</text>
+    <text x="925" y="2305" font-size="20" fill="black" text-anchor="start">Allocation = (Floor, Spot). Clock = callable returning datetime. Enum values encode vehicle fit.</text>
+    <text x="925" y="2340" font-size="20" fill="black" text-anchor="start">Ticket names its spot by ID. Data types also appear in signatures; their other links are omitted.</text>
+    <text x="1230" y="2425" font-size="20" fill="black" text-anchor="middle">Open V: association · Hollow triangle: inheritance · Filled diamond: composition · Color carries no UML meaning</text>
+  </g>
+</svg>

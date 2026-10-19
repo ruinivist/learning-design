@@ -4,18 +4,20 @@ Every abstraction has exactly one implementation. A second pricing rule,
 payment method, or allocation policy is a new class in the section that owns
 that concept, and nothing else moves.
 
-The reasoning lives in ../plot_40.md -- build order, and what to say when.
+Common mistakes and correctness tradeoffs live in parking lot.md.
 Keep this file bare: in the room you speak the rationale, you don't type it.
 """
 
 from abc import ABC, abstractmethod
 from collections import Counter
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from enum import IntEnum
 from itertools import count
+import logging
 from math import ceil
 from threading import RLock
 from typing import Self
@@ -147,8 +149,12 @@ class Subject(ABC):
         self._observers.remove(observer)
 
     def notify(self) -> None:
-        for observer in self._observers:
-            observer.update(self)
+        # A failed display must not fail a committed parking operation or other displays.
+        for observer in tuple(self._observers):
+            try:
+                observer.update(self)
+            except Exception:
+                logging.getLogger(__name__).exception("Observer update failed: %r", observer)
 
 
 class Floor(Subject):
@@ -163,7 +169,12 @@ class Floor(Subject):
     def __init__(self, floor_id: int, spots: Iterable[Spot]) -> None:
         super().__init__()
         self.id = floor_id
-        self._spots = {spot.id: spot for spot in spots}
+        # Reject duplicate IDs before a dictionary silently drops a spot.
+        self._spots: dict[str, Spot] = {}
+        for spot in spots:
+            if spot.id in self._spots:
+                raise ValueError(f"Duplicate spot ID on floor {floor_id}: {spot.id}")
+            self._spots[spot.id] = spot
 
 
     @property
@@ -201,14 +212,12 @@ class Floor(Subject):
         if self._spots.get(spot.id) is not spot:  # a buggy strategy, not input
             raise SpotStateError(f"{spot.id} is not on floor {self.id}")
         spot.occupy(vehicle)  # raises if the strategy handed back a taken spot
-        self.notify()
 
     def _release(self, spot_id: str) -> None:
         spot = self._spots.get(spot_id)
         if spot is None:  # the lookup IS the ownership check
             raise SpotStateError(f"{spot_id} is not on floor {self.id}")
         spot.free()
-        self.notify()
 
 
 # ===================== lot =====================
@@ -233,6 +242,9 @@ class ParkingLot:
     def __init__(self, floors: Sequence[Floor], allocation: AllocationStrategy) -> None:
         self.floors = tuple(floors)
         self._by_id = {floor.id: floor for floor in self.floors}
+        # Entry and exit must resolve each floor ID to the same floor.
+        if len(self._by_id) != len(self.floors):
+            raise ValueError("Duplicate floor IDs")
         self._allocation = allocation
         # for now one coarse lot-wide lock; can make it more granular if needed so say locking at gates/floors
         self._lock = RLock()
@@ -256,6 +268,8 @@ class ParkingLot:
                 entry_time=now,
             )
             self._active[ticket.id] = ticket
+            # Notify only after occupancy and ticket state agree, still under the lock.
+            floor.notify()
             return ticket
 
     def find_active(self, ticket_id: str) -> Ticket:
@@ -277,6 +291,16 @@ class ParkingLot:
             floor = self._by_id[ticket.floor_id]
             floor._release(ticket.spot_id)
             del self._active[ticket.id]
+            floor.notify()
+
+    @contextmanager
+    def checkout(self, ticket_id: str) -> Iterator[Ticket]:
+        # All exit panels share this lock; separate lookup/release locks permit double charging.
+        # shortcut: payment blocks the lot, use ticket-level coordination for network payments.
+        with self._lock:
+            ticket = self.find_active(ticket_id)
+            yield ticket
+            self.release(ticket)
 
     @property
     def free_count(self) -> int:
@@ -316,7 +340,10 @@ class AnyFreeSpotAllocation(AllocationStrategy):
 # Decimal only, on purpose: a float must never reach money. Decimal(0.1) is
 # 0.10000000000000000555..., Decimal("0.1") is exact.
 def money(value: Decimal) -> Decimal:
-    return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    # Negative or nonfinite prices are errors, not free parking.
+    if not isinstance(value, Decimal) or not value.is_finite() or value < 0:
+        raise ValueError("Money must be a finite, nonnegative Decimal")
+    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 class PricingStrategy(ABC):
@@ -335,6 +362,11 @@ class HourlyPricing(PricingStrategy):
         later_hour: Decimal = Decimal("3.50"),
         grace_minutes: int = 15,
     ) -> None:
+        # Validate configuration before it can produce an invalid quote or charge.
+        for rate in (first_hour, later_hour):
+            money(rate)
+        if not isinstance(grace_minutes, int) or grace_minutes < 0:
+            raise ValueError("Grace minutes must be a nonnegative integer")
         self.first_hour = first_hour
         self.later_hour = later_hour
         self.grace_minutes = grace_minutes
@@ -438,19 +470,18 @@ class ExitPanel:
     def quote(self, ticket_id: str, now: datetime | None = None) -> Decimal:
         """Advisory -- settle re-prices, so the clock runs while they find a card."""
         at = now or self._clock()
-        return self._pricing.price(self._lot.find_active(ticket_id), at)
+        return money(self._pricing.price(self._lot.find_active(ticket_id), at))
 
     def settle(self, ticket_id: str, now: datetime | None = None) -> Receipt:
         """Price, charge, then release. The ordering is the invariant."""
         at = now or self._clock()
-        ticket = self._lot.find_active(ticket_id)
-        amount = self._pricing.price(ticket, at)
-        receipt = (
-            self._payment.charge(amount, ticket.id, at)  # a decline propagates,
-            if amount > 0  # leaving the car parked, which is correct
-            else Receipt(ticket_id=ticket.id, amount=money(Decimal(0)), method="free", paid_at=at)
-        )
-        self._lot.release(ticket)
+        with self._lot.checkout(ticket_id) as ticket:
+            amount = money(self._pricing.price(ticket, at))
+            receipt = (
+                self._payment.charge(amount, ticket.id, at)  # a decline propagates,
+                if amount > 0  # leaving the car parked, which is correct
+                else Receipt(ticket_id=ticket.id, amount=money(Decimal(0)), method="free", paid_at=at)
+            )
         return receipt
 
 
