@@ -1,199 +1,166 @@
-"""LLD practice: a multi-floor parking lot. Interview-sized -- ~40 min to write.
-
-Every abstraction has exactly one implementation. A second pricing rule,
-payment method, or allocation policy is a new class in the section that owns
-that concept, and nothing else moves.
-
-Common mistakes and correctness tradeoffs live in parking lot.md.
-Keep this file bare: in the room you speak the rationale, you don't type it.
+"""Provides parking state, allocation, pricing, payment, and display updates.
+Entry and exit panels coordinate the in-memory example wired in main().
 """
+
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import Counter
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import Callable, Generator, Iterable, Sequence
 from contextlib import contextmanager
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from enum import IntEnum
 from itertools import count
 import logging
 from math import ceil
 from threading import RLock
-from typing import Self
 
-# ===================== vocabulary =====================
+# ---------- Vocabulary and errors ----------
 
-# why enums? no type bloat, we wold only need new types if some behavior was overriden
-# here only "consumers" behave differently like pricing and lot picker, this itself does not own
-# those behavs so enum is enough as we don't override anything
+
 class SpotSize(IntEnum):
     MOTORCYCLE = 1
     COMPACT = 2
     LARGE = 3
 
 
-# the two enums share a numbering on purpose: a VehicleType's value IS the smallest SpotSize it fits.
-# This can be made into more complex can_fit but this is enough for now
-# nore that the allocation strategy DOES become couple with the enum values, something that isn't idea
-# but good enough for now, a map is just more bloat, I can make an indirection at someplace else via
-# a dict or something that'll just map it value here to size there
 class VehicleType(IntEnum):
-    MOTORCYCLE = 1
-    CAR = 2
-    VAN = 3
+    # Each value names the minimum spot size for this one-spot vehicle model.
+    MOTORCYCLE = SpotSize.MOTORCYCLE
+    CAR = SpotSize.COMPACT
+    VAN = SpotSize.LARGE
 
 
-# ===================== errors =====================
-
-# the base error class for the app
 class ParkingError(Exception):
-    """One base so callers can catch the lot."""
+    """Base for parking failures handled by panels or their callers."""
 
-# derived ones
+
 class LotFullError(ParkingError):
-    """No eligible spot for this vehicle."""
+    """No compatible free spot exists."""
 
 
 class InvalidTicketError(ParkingError):
-    """Unknown, already settled, or not the object the lot issued."""
+    """The ticket is unknown or already settled."""
 
 
 class SpotStateError(ParkingError):
-    """Occupied twice or freed twice -- an internal bug, never input."""
+    """An allocation or occupancy change violates the parking model."""
 
 
 class PaymentFailedError(ParkingError):
-    """Declined. The spot must stay occupied."""
+    """Payment failed; checkout must leave the vehicle parked."""
 
 
-# ===================== data only models =====================
+# ---------- Immutable records ----------
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Vehicle:
-    """Type is a field, not a subclass -- nothing dispatches on it."""
+    """Carries vehicle data through admission and ticketing.
+    Callers supply a canonical plate used to identify an active stay.
+    """
 
     plate: str
-    type: VehicleType #fk
+    type: VehicleType
+
+    # __post__init__ is unqieu to dataclasses, python auto generates it the __init__
+    # if I don't give one and then calls __post_init__, this is better to add validations
+    # in
+    def __post_init__(self) -> None:
+        if not self.plate.strip():
+            raise ValueError("Plate must not be blank")
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Ticket:
-    """spot_id not Spot: a ticket outlives and out-travels the spot it names.
-
-    spot_size is copied, not looked up, so price() stays (ticket, exit_time) --
-    a size-tiered rule is a new PricingStrategy, not a lot reference.
+    """Records a stay without exposing mutable parking state.
+    Checkout and pricing use the entry-time snapshot, including spot size.
     """
 
     id: str
+    # if it's a different entity, prefix with that
     spot_id: str
     floor_id: int
-    vehicle: Vehicle # fk
-    spot_size: SpotSize # fk
+    vehicle: Vehicle
+    spot_size: SpotSize
     entry_time: datetime
 
 
-# ===================== spot =====================
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Receipt:
+    ticket_id: str
+    amount: Decimal
+    method: str
+    # these are all ust timestamps
+    paid_at: datetime
 
-# fields: an id to name it, size and occupant for its own behaviour. No floor
-# back-pointer -- nothing read it, and Floor already owns the floor->spot map.
-# eq=False on purpose: an entity, not a value. Identity __eq__ and __hash__
-# survives -- dataclass nulls it only when it generates __eq__.
-@dataclass(slots=True, kw_only=True, eq=False)
+
+# ---------- Spots and floors ----------
+
+
 class Spot:
-    id: str
-    size: SpotSize
-    occupied_by: Vehicle | None = field(default=None, init=False)
+    __slots__ = ("_id", "_size", "_occupied_by")
+
+    def __init__(self, *, id: str, size: SpotSize) -> None:
+        self._id, self._size = id, size
+        self._occupied_by: Vehicle | None = None
+
+    # this whole charade is just to keep vars as _id and allow callers
+    # to read them
+    @property
+    def id(self) -> str:
+        return self._id
+
+    @property
+    def size(self) -> SpotSize:
+        return self._size
 
     @property
     def is_free(self) -> bool:
-        return self.occupied_by is None
+        return self._occupied_by is None
 
-    def occupy(self, vehicle: Vehicle) -> None:
-        if self.occupied_by is not None:
-            raise SpotStateError(f"{self.id} already holds {self.occupied_by.plate}")
-        # this class would own any size checks, none for now
-        self.occupied_by = vehicle
+    def can_fit(self, vehicle: Vehicle) -> bool:
+        return self._size >= vehicle.type
 
-    def free(self) -> None:
-        if self.occupied_by is None:
+    def _occupy(self, vehicle: Vehicle) -> None:
+        if not self.is_free or not self.can_fit(vehicle):
+            raise SpotStateError(f"{self.id} is occupied or incompatible")
+        self._occupied_by = vehicle
+
+    def _free(self) -> None:
+        if self.is_free:
             raise SpotStateError(f"{self.id} is already free")
-        self.occupied_by = None
+        self._occupied_by = None
 
 
-# ===================== floor =====================
-
-
-class Observer[T](ABC):
-    """GoF Observer. Generic so update() keeps the concrete subject type."""
-
-    @abstractmethod
-    def update(self, subject: T) -> None: ...
-
-
-class Subject(ABC):
-    """GoF Subject: the observer list, attach/detach, and notify.
-
-    Self typing means a subclass's observers are Observer[ThatSubclass] --
-    no cast in notify(), no `class Floor(Subject["Floor"])` self-reference.
-    """
-
-    def __init__(self) -> None:
-        self._observers: list[Observer[Self]] = []
-
-    def attach(self, observer: Observer[Self]) -> None:
-        self._observers.append(observer)
-
-    def detach(self, observer: Observer[Self]) -> None:
-        self._observers.remove(observer)
-
-    def notify(self) -> None:
-        # A failed display must not fail a committed parking operation or other displays.
-        for observer in tuple(self._observers):
-            try:
-                observer.update(self)
-            except Exception:
-                logging.getLogger(__name__).exception("Observer update failed: %r", observer)
-
-
-class Floor(Subject):
-    """Owns its spots. Free-ness lives on the Spot only -- no index to drift.
-
-    LOCKING: nothing here locks. Public members are reads, safe for a strategy
-    or a board. Underscored members mutate and assume the caller already holds
-    ParkingLot's lock -- the lot is their only legitimate caller. Reads are
-    eager for the same reason, see free_spots.
+class Floor:
+    """Owns spots and publishes committed availability changes.
+    Reads and mutations run during setup or under the owning lot's lock.
     """
 
     def __init__(self, floor_id: int, spots: Iterable[Spot]) -> None:
-        super().__init__()
-        self.id = floor_id
-        # Reject duplicate IDs before a dictionary silently drops a spot.
+        self._id = floor_id
         self._spots: dict[str, Spot] = {}
+        self._observers: list[Callable[[Floor], None]] = []
         for spot in spots:
             if spot.id in self._spots:
                 raise ValueError(f"Duplicate spot ID on floor {floor_id}: {spot.id}")
             self._spots[spot.id] = spot
 
+    @property
+    def id(self) -> int:
+        return self._id
 
     @property
     def free_spots(self) -> tuple[Spot, ...]:
-        """The one derivation. counts and free_count are both just this, reduced.
-
-        A tuple, not a generator: a generator defers the read to the consumer's
-        next(), so whether it ran under the lock would depend on a caller you
-        cannot see from here. Eager means the read happens in the caller's
-        critical section or not at all.
-        """
-        # ponytail: O(n) per read, n = one floor's spots. A park costs one read to
-        # allocate plus one per board, via notify() -> counts. Free-index at 10k+.
-        return tuple(s for s in self._spots.values() if s.is_free)
+        # Read eagerly so allocation observes state within the lot's lock.
+        return tuple(spot for spot in self._spots.values() if spot.is_free)
 
     @property
     def counts(self) -> dict[SpotSize, int]:
-        """Counted from the spots themselves, so it cannot disagree with them."""
-        return Counter(s.size for s in self.free_spots)
+        return Counter(spot.size for spot in self.free_spots)
 
     @property
     def free_count(self) -> int:
@@ -203,61 +170,85 @@ class Floor(Subject):
     def total_count(self) -> int:
         return len(self._spots)
 
-    # _take and _release take different arguments on purpose: entry and exit are
-    # not mirror images. At entry the strategy has already picked a live Spot; at
-    # exit all the lot holds is a string off the ticket. Both guards are the same
-    # dict lookup -- ownership is "is this spot mine", asked two ways.
+    def attach(self, observer: Callable[[Floor], None]) -> None:
+        """Registers a read-only display callback during construction."""
+        self._observers.append(observer)
+
+    def _notify(self) -> None:
+        for observer in tuple(self._observers):
+            try:
+                observer(self)
+            except Exception:
+                # A display failure cannot undo parking or suppress other displays.
+                logging.getLogger(__name__).exception("Display update failed")
 
     def _take(self, spot: Spot, vehicle: Vehicle) -> None:
-        if self._spots.get(spot.id) is not spot:  # a buggy strategy, not input
+        if self._spots.get(spot.id) is not spot:
             raise SpotStateError(f"{spot.id} is not on floor {self.id}")
-        spot.occupy(vehicle)  # raises if the strategy handed back a taken spot
+        spot._occupy(vehicle)
 
     def _release(self, spot_id: str) -> None:
         spot = self._spots.get(spot_id)
-        if spot is None:  # the lookup IS the ownership check
+        if spot is None:
             raise SpotStateError(f"{spot_id} is not on floor {self.id}")
-        spot.free()
+        spot._free()
 
 
-# ===================== lot =====================
+# ---------- Allocation policy ----------
 
-
-# names the concept, and one edit when TRUCK makes it tuple[Floor, Sequence[Spot]]
 Allocation = tuple[Floor, Spot]
 
 
 class AllocationStrategy(ABC):
-    """Reads floor state, returns a choice. The lot does the mutation."""
+    """Selects a spot without changing it.
+    The lot validates and commits the selection under its lock.
+    """
 
     @abstractmethod
     def choose(
-        self, floors: Sequence[Floor], vehicle: Vehicle
+        self, floors: Iterable[Floor], vehicle: Vehicle
     ) -> Allocation | None: ...
 
 
+class AnyFreeSpotAllocation(AllocationStrategy):
+    def choose(self, floors: Iterable[Floor], vehicle: Vehicle) -> Allocation | None:
+        for floor in floors:
+            for spot in floor.free_spots:
+                if spot.can_fit(vehicle):
+                    return floor, spot
+        return None
+
+
+# ---------- Parking state ----------
+
+
 class ParkingLot:
-    """Aggregate root: floors, the lock, the ticket registry. Knows nothing of money."""
+    """Keeps active tickets and occupied spots consistent under one lock.
+    Panels use it for admission, ticket lookup, and internal checkout transitions.
+    """
 
     def __init__(self, floors: Sequence[Floor], allocation: AllocationStrategy) -> None:
-        self.floors = tuple(floors)
-        self._by_id = {floor.id: floor for floor in self.floors}
-        # Entry and exit must resolve each floor ID to the same floor.
-        if len(self._by_id) != len(self.floors):
+        self._floors = {floor.id: floor for floor in floors}
+        if len(self._floors) != len(floors):
             raise ValueError("Duplicate floor IDs")
         self._allocation = allocation
-        # for now one coarse lot-wide lock; can make it more granular if needed so say locking at gates/floors
-        self._lock = RLock()
         self._active: dict[str, Ticket] = {}
+        self._checking_out: set[str] = set()
         self._seq = count(1)
+        self._lock = RLock()
 
     def park(self, vehicle: Vehicle, now: datetime) -> Ticket:
-        """Choose, take, mint and register -- all under one lock."""
+        """Admits one vehicle atomically; now must be an aware UTC timestamp."""
         with self._lock:
-            choice = self._allocation.choose(self.floors, vehicle)
+            # shortcut: linear scans suit this example; index plates/spots for large lots.
+            if any(t.vehicle.plate == vehicle.plate for t in self._active.values()):
+                raise ParkingError(f"{vehicle.plate} is already parked")
+            choice = self._allocation.choose(self._floors.values(), vehicle)
             if choice is None:
                 raise LotFullError(vehicle.type.name)
             floor, spot = choice
+            if self._floors.get(floor.id) is not floor:
+                raise SpotStateError(f"Floor {floor.id} does not belong to this lot")
             floor._take(spot, vehicle)
             ticket = Ticket(
                 id=f"T-{next(self._seq):04d}",
@@ -268,93 +259,72 @@ class ParkingLot:
                 entry_time=now,
             )
             self._active[ticket.id] = ticket
-            # Notify only after occupancy and ticket state agree, still under the lock.
-            floor.notify()
+            floor._notify()
             return ticket
 
     def find_active(self, ticket_id: str) -> Ticket:
-        """Authoritative lookup. A panel can obtain a Ticket, never originate one:
-        untrusted input crosses as an id, validated output as a frozen object.
-        Note the Ticket is immutable but not self-validating -- it says nothing
-        about whether it is still in _active by the time the caller uses it.
-        """
         with self._lock:
             ticket = self._active.get(ticket_id)
             if ticket is None:
                 raise InvalidTicketError(ticket_id)
             return ticket
 
-    def release(self, ticket: Ticket) -> None:
-        with self._lock:
-            if self._active.get(ticket.id) is not ticket:
-                raise InvalidTicketError(ticket.id)
-            floor = self._by_id[ticket.floor_id]
-            floor._release(ticket.spot_id)
-            del self._active[ticket.id]
-            floor.notify()
-
     @contextmanager
-    def checkout(self, ticket_id: str) -> Iterator[Ticket]:
-        # All exit panels share this lock; separate lookup/release locks permit double charging.
-        # shortcut: payment blocks the lot, use ticket-level coordination for network payments.
+    def _checkout(self, ticket_id: str) -> Generator[Ticket, None, None]:
+        """Holds checkout state stable while ExitPanel coordinates payment.
+        A successful block releases the spot; an exception leaves it occupied.
+        """
+        # shortcut: callbacks/payment hold the lot lock; redesign for remote payments.
         with self._lock:
             ticket = self.find_active(ticket_id)
-            yield ticket
-            self.release(ticket)
+            if ticket_id in self._checking_out:
+                raise ParkingError(f"Checkout already in progress: {ticket_id}")
+            self._checking_out.add(ticket_id)
+            try:
+                yield ticket
+                self._release(ticket)
+            finally:
+                self._checking_out.remove(ticket_id)
+
+    def _release(self, ticket: Ticket) -> None:
+        # Only _checkout calls this, with the lot lock held.
+        if self._active.get(ticket.id) is not ticket:
+            raise InvalidTicketError(ticket.id)
+        floor = self._floors[ticket.floor_id]
+        floor._release(ticket.spot_id)
+        del self._active[ticket.id]
+        floor._notify()
 
     @property
     def free_count(self) -> int:
-        with self._lock:  # a scan across floors; unlocked it tears mid-park
-            return sum(floor.free_count for floor in self.floors)
+        with self._lock:
+            return sum(floor.free_count for floor in self._floors.values())
 
     @property
     def total_count(self) -> int:
-        # no lock: spots are never added or removed after construction
-        return sum(floor.total_count for floor in self.floors)
+        return sum(floor.total_count for floor in self._floors.values())
 
 
-# ===================== allocation =====================
+# ---------- Pricing and payment ----------
 
 
-class AnyFreeSpotAllocation(AllocationStrategy):
-    """First free spot the vehicle fits in.
-
-    Because the choice is a Spot, smallest-first is a true sibling: swap this for
-    min(floor.free_spots, key=...), nothing else moves. Nearest-gate is NOT --
-    choose() has no gate, so it needs a gate id threaded panel -> park -> here.
-    Left out on purpose: an argument every current strategy ignores.
-    """
-
-    def choose(
-        self, floors: Sequence[Floor], vehicle: Vehicle
-    ) -> Allocation | None:
-        for floor in floors:
-            for spot in floor.free_spots:
-                if spot.size >= vehicle.type:
-                    return floor, spot
-        return None
-
-
-# ===================== pricing =====================
-
-# Decimal only, on purpose: a float must never reach money. Decimal(0.1) is
-# 0.10000000000000000555..., Decimal("0.1") is exact.
 def money(value: Decimal) -> Decimal:
-    # Negative or nonfinite prices are errors, not free parking.
     if not isinstance(value, Decimal) or not value.is_finite() or value < 0:
         raise ValueError("Money must be a finite, nonnegative Decimal")
     return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 class PricingStrategy(ABC):
-    """Pure function of (ticket, exit_time) -- the clock is an argument."""
+    """Computes a fee without side effects.
+    Quotes and settlement supply aware UTC entry and exit timestamps.
+    """
 
     @abstractmethod
     def price(self, ticket: Ticket, exit_time: datetime) -> Decimal: ...
 
 
 class HourlyPricing(PricingStrategy):
-    """Per started hour after a grace period. A daily cap is a sibling, not an `if`."""
+    """Waives short stays, then charges started hours measured from entry."""
 
     def __init__(
         self,
@@ -362,101 +332,82 @@ class HourlyPricing(PricingStrategy):
         later_hour: Decimal = Decimal("3.50"),
         grace_minutes: int = 15,
     ) -> None:
-        # Validate configuration before it can produce an invalid quote or charge.
-        for rate in (first_hour, later_hour):
-            money(rate)
-        if not isinstance(grace_minutes, int) or grace_minutes < 0:
+        if type(grace_minutes) is not int or grace_minutes < 0:
             raise ValueError("Grace minutes must be a nonnegative integer")
-        self.first_hour = first_hour
-        self.later_hour = later_hour
-        self.grace_minutes = grace_minutes
+        self._first_hour = money(first_hour)
+        self._later_hour = money(later_hour)
+        self._grace_minutes = grace_minutes
 
     def price(self, ticket: Ticket, exit_time: datetime) -> Decimal:
-        minutes = (exit_time - ticket.entry_time).total_seconds() / 60
-        if minutes < 0:
-            raise ValueError("exit_time precedes entry_time")
-        if minutes <= self.grace_minutes:
-            return money(Decimal(0))
-        hours = max(1, ceil(minutes / 60))
-        return money(self.first_hour + self.later_hour * (hours - 1))
-
-
-# ===================== payment =====================
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class Receipt:
-    ticket_id: str
-    amount: Decimal
-    method: str
-    paid_at: datetime
+        seconds = (exit_time - ticket.entry_time).total_seconds()
+        if seconds < 0:
+            raise ValueError("Exit time precedes entry time")
+        if seconds <= self._grace_minutes * 60:
+            return Decimal("0.00")
+        hours = ceil(seconds / 3600)
+        return money(self._first_hour + self._later_hour * (hours - 1))
 
 
 class PaymentProcessor(ABC):
-    """DIP: ExitPanel depends on this, not on cash. charge() is a template method."""
-
-    method = "unknown"
+    """Returns a receipt only after successful payment.
+    ExitPanel retains the stay when charge raises PaymentFailedError or another error.
+    """
 
     @abstractmethod
-    def authorize(self, amount: Decimal) -> bool: ...
-
-    def charge(self, amount: Decimal, ticket_id: str, now: datetime) -> Receipt:
-        if not self.authorize(amount):
-            raise PaymentFailedError(f"{self.method} declined {amount}")
-        return Receipt(
-            ticket_id=ticket_id, amount=amount, method=self.method, paid_at=now
-        )
+    def charge(self, amount: Decimal, ticket_id: str, now: datetime) -> Receipt: ...
 
 
 class CashPayment(PaymentProcessor):
-    method = "cash"
+    """Simulates confirmed cash payment for the example."""
 
-    def authorize(self, amount: Decimal) -> bool:
-        return True
+    def charge(self, amount: Decimal, ticket_id: str, now: datetime) -> Receipt:
+        return Receipt(
+            ticket_id=ticket_id, amount=money(amount), method="cash", paid_at=now
+        )
 
 
-# ===================== display =====================
+# ---------- Display ----------
 
 
-class DisplayBoard(Observer[Floor]):
-    """Free-spot counts. Pushed to, never polls."""
-
+class DisplayBoard:
     def __init__(self, floor: Floor) -> None:
-        self.floor_id = floor.id
-        self.counts: dict[str, int] = {}
-        floor.attach(self)
-        self.update(floor)  # GoF attach only registers, so pull the initial state
+        self._floor_id = floor.id
+        self._counts: dict[SpotSize, int] = {}
+        floor.attach(self.update)
+        self.update(floor)
 
-    def update(self, subject: Floor) -> None:
-        self.counts = {size.name: n for size, n in sorted(subject.counts.items())}
+    def update(self, floor: Floor) -> None:
+        self._counts = floor.counts
 
     def render(self) -> str:
-        if not self.counts:
-            return f"Floor {self.floor_id}: FULL"
-        body = "  ".join(f"{name} {n}" for name, n in self.counts.items())
-        return f"Floor {self.floor_id}: {body}"
+        counts = self._counts
+        body = "  ".join(f"{size.name} {n}" for size, n in sorted(counts.items()))
+        return f"Floor {self._floor_id}: {body or 'FULL'}"
 
 
-# ===================== panels =====================
-# this isn't java, Runnable.run() is really pointless when all you need is a cpp
-# like callable
+# ---------- Entry and exit coordination ----------
+
 Clock = Callable[[], datetime]
 
 
 def system_clock() -> datetime:
+    # Explicit timestamps and injected clocks must follow the same UTC contract.
     return datetime.now(UTC)
 
-# by passing in clock, you can test this easily by mocking a "tick" in clock
-# impossible timing issues in tests otherwise if you rely on walltime
+
 class EntryPanel:
     def __init__(self, lot: ParkingLot, clock: Clock = system_clock) -> None:
         self._lot, self._clock = lot, clock
 
     def park(self, vehicle: Vehicle, now: datetime | None = None) -> Ticket:
-        return self._lot.park(vehicle, now or self._clock())
+        return self._lot.park(vehicle, now if now is not None else self._clock())
 
 
 class ExitPanel:
+    """Coordinates pricing and payment before the lot releases a vehicle.
+    Quotes are advisory; settlement prices the stay again under the shared lock.
+    """
+
     def __init__(
         self,
         lot: ParkingLot,
@@ -467,41 +418,72 @@ class ExitPanel:
         self._lot, self._pricing, self._payment = lot, pricing, payment
         self._clock = clock
 
+    def _price(self, ticket: Ticket, at: datetime) -> Decimal:
+        if at < ticket.entry_time:
+            raise ValueError("Exit time precedes entry time")
+        return money(self._pricing.price(ticket, at))
+
     def quote(self, ticket_id: str, now: datetime | None = None) -> Decimal:
-        """Advisory -- settle re-prices, so the clock runs while they find a card."""
-        at = now or self._clock()
-        return money(self._pricing.price(self._lot.find_active(ticket_id), at))
+        at = now if now is not None else self._clock()
+        return self._price(self._lot.find_active(ticket_id), at)
 
     def settle(self, ticket_id: str, now: datetime | None = None) -> Receipt:
-        """Price, charge, then release. The ordering is the invariant."""
-        at = now or self._clock()
-        with self._lot.checkout(ticket_id) as ticket:
-            amount = money(self._pricing.price(ticket, at))
-            receipt = (
-                self._payment.charge(amount, ticket.id, at)  # a decline propagates,
-                if amount > 0  # leaving the car parked, which is correct
-                else Receipt(ticket_id=ticket.id, amount=money(Decimal(0)), method="free", paid_at=at)
-            )
+        at = now if now is not None else self._clock()
+        with self._lot._checkout(ticket_id) as ticket:
+            amount = self._price(ticket, at)
+            if amount > 0:
+                receipt = self._payment.charge(amount, ticket.id, at)
+            else:
+                receipt = Receipt(
+                    ticket_id=ticket.id, amount=amount, method="free", paid_at=at
+                )
         return receipt
 
 
-# ===================== composition root =====================
+# ---------- Composition and happy path ----------
 
 FloorSpec = dict[SpotSize, int]
 
 
 def build_lot(specs: dict[int, FloorSpec]) -> ParkingLot:
+    if any(
+        type(quantity) is not int or quantity < 0
+        for spec in specs.values()
+        for quantity in spec.values()
+    ):
+        raise ValueError("Spot counts must be nonnegative integers")
     floors = [
         Floor(
-            fid,
-            [
-                # readable for humans, never parsed: size.name[0] collides the
-                # day a second M-size lands. Anything needed from an id is a field.
-                Spot(id=f"{fid}{size.name[0]}{i:02d}", size=size)
+            floor_id,
+            (
+                Spot(id=f"{floor_id}-{size.name}-{index}", size=size)
                 for size, quantity in spec.items()
-                for i in range(1, quantity + 1)
-            ],
+                for index in range(1, quantity + 1)
+            ),
         )
-        for fid, spec in specs.items()
+        for floor_id, spec in specs.items()
     ]
     return ParkingLot(floors, AnyFreeSpotAllocation())
+
+
+def main() -> None:
+    floor = Floor(1, [Spot(id="1-C1", size=SpotSize.COMPACT)])
+    board = DisplayBoard(floor)
+    lot = ParkingLot([floor], AnyFreeSpotAllocation())
+    entry = EntryPanel(lot)
+    exit_panel = ExitPanel(lot, HourlyPricing(), CashPayment())
+
+    print(board.render())
+    ticket = entry.park(Vehicle(plate="KA01AB1234", type=VehicleType.CAR))
+    print(f"Parked: {ticket.id} at {ticket.spot_id}")
+    print(board.render())
+
+    exit_time = ticket.entry_time + timedelta(hours=2)
+    print(f"Quote after two hours: {exit_panel.quote(ticket.id, exit_time)}")
+    receipt = exit_panel.settle(ticket.id, exit_time)
+    print(f"Paid: {receipt.amount} by {receipt.method}")
+    print(board.render())
+
+
+if __name__ == "__main__":
+    main()
