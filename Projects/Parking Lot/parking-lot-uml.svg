@@ -21,7 +21,7 @@
     <text x="78" y="238" font-size="20" fill="black" text-anchor="start">- _lot: ParkingLot</text>
     <text x="78" y="268" font-size="20" fill="black" text-anchor="start">- _clock: Clock</text>
     <path d="M60 284 H660" fill="none" stroke="black" stroke-width="2" />
-    <text x="78" y="314" font-size="20" fill="black" text-anchor="start">+ park(vehicle, now=None): Ticket</text>
+    <text x="78" y="314" font-size="20" fill="black" text-anchor="start">+ park(vehicle): Ticket</text>
     </g>
     <g id="lot">
       <rect x="900" y="150" width="660" height="394" fill="white" stroke="black" stroke-width="2" />
@@ -36,7 +36,6 @@
     <text x="918" y="404" font-size="20" fill="black" text-anchor="start">+ park(vehicle, now): Ticket</text>
     <text x="918" y="434" font-size="20" fill="black" text-anchor="start">+ find_active(ticket_id): Ticket</text>
     <text x="918" y="464" font-size="20" fill="black" text-anchor="start">- _checkout(ticket_id): context manager</text>
-    <text x="918" y="494" font-size="20" fill="black" text-anchor="start">- _release(ticket): None</text>
     <text x="918" y="524" font-size="20" fill="black" text-anchor="start">+ free_count / total_count: int {readOnly}</text>
     </g>
     <g id="exit">
@@ -48,8 +47,8 @@
     <text x="1818" y="298" font-size="20" fill="black" text-anchor="start">- _payment: PaymentProcessor</text>
     <text x="1818" y="328" font-size="20" fill="black" text-anchor="start">- _clock: Clock</text>
     <path d="M1800 344 H2400" fill="none" stroke="black" stroke-width="2" />
-    <text x="1818" y="374" font-size="20" fill="black" text-anchor="start">+ quote(ticket_id, now=None): Decimal</text>
-    <text x="1818" y="404" font-size="20" fill="black" text-anchor="start">+ settle(ticket_id, now=None): Receipt</text>
+    <text x="1818" y="374" font-size="20" fill="black" text-anchor="start">+ quote(ticket_id): Decimal</text>
+    <text x="1818" y="404" font-size="20" fill="black" text-anchor="start">+ settle(ticket_id): Receipt</text>
     </g>
     <g id="allocation">
       <rect x="60" y="630" width="600" height="152" fill="white" stroke="black" stroke-width="2" />
@@ -69,7 +68,7 @@
     <text x="1230.0" y="778" font-size="25" fill="#18713a" text-anchor="middle" font-weight="bold">Floor</text>
     <path d="M900 798 H1560" fill="none" stroke="black" stroke-width="2" />
     <text x="918" y="828" font-size="20" fill="black" text-anchor="start">+ id: int {readOnly}</text>
-    <text x="918" y="858" font-size="20" fill="black" text-anchor="start">- _spots: dict[str, Spot]</text>
+    <text x="918" y="858" font-size="20" fill="black" text-anchor="start">- _spots: dict[int, Spot]</text>
     <text x="918" y="888" font-size="20" fill="black" text-anchor="start">- _observers: list[Callable[[Floor], None]]</text>
     <text x="918" y="918" font-size="20" fill="black" text-anchor="start">+ free_spots: tuple[Spot, ...] {readOnly}</text>
     <text x="918" y="948" font-size="20" fill="black" text-anchor="start">+ counts: dict[SpotSize, int] {readOnly}</text>
@@ -83,7 +82,7 @@
       <rect x="900" y="1230" width="660" height="304" fill="white" stroke="black" stroke-width="2" />
     <text x="1230.0" y="1268" font-size="25" fill="#18713a" text-anchor="middle" font-weight="bold">Spot</text>
     <path d="M900 1288 H1560" fill="none" stroke="black" stroke-width="2" />
-    <text x="918" y="1318" font-size="20" fill="black" text-anchor="start">+ id: str {readOnly}</text>
+    <text x="918" y="1318" font-size="20" fill="black" text-anchor="start">+ id: int {readOnly}</text>
     <text x="918" y="1348" font-size="20" fill="black" text-anchor="start">+ size: SpotSize {readOnly}</text>
     <text x="918" y="1378" font-size="20" fill="black" text-anchor="start">- _occupied_by: Vehicle | None</text>
     <text x="918" y="1408" font-size="20" fill="black" text-anchor="start">+ is_free: bool {readOnly}</text>
@@ -138,7 +137,7 @@
     <text x="360.0" y="1216" font-size="25" fill="#18713a" text-anchor="middle" font-weight="bold">Ticket</text>
     <path d="M60 1236 H660" fill="none" stroke="black" stroke-width="2" />
     <text x="78" y="1266" font-size="20" fill="black" text-anchor="start">+ id: str</text>
-    <text x="78" y="1296" font-size="20" fill="black" text-anchor="start">+ spot_id: str</text>
+    <text x="78" y="1296" font-size="20" fill="black" text-anchor="start">+ spot_id: int</text>
     <text x="78" y="1326" font-size="20" fill="black" text-anchor="start">+ floor_id: int</text>
     <text x="78" y="1356" font-size="20" fill="black" text-anchor="start">+ vehicle: Vehicle</text>
     <text x="78" y="1386" font-size="20" fill="black" text-anchor="start">+ spot_size: SpotSize</text>

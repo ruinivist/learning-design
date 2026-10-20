@@ -1,5 +1,6 @@
-"""Provides parking state, allocation, pricing, payment, and display updates.
-Entry and exit panels coordinate the in-memory example wired in main().
+"""Models an in-memory parking lot with entry, checkout, and availability displays.
+
+main() wires the components together and runs one stay.
 """
 
 from __future__ import annotations
@@ -27,7 +28,8 @@ class SpotSize(IntEnum):
 
 
 class VehicleType(IntEnum):
-    # Each value names the minimum spot size for this one-spot vehicle model.
+    # Each vehicle occupies one spot; its value is the minimum spot size.
+    # Separate enums let vehicle categories and spot sizes evolve independently.
     MOTORCYCLE = SpotSize.MOTORCYCLE
     CAR = SpotSize.COMPACT
     VAN = SpotSize.LARGE
@@ -58,16 +60,15 @@ class PaymentFailedError(ParkingError):
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Vehicle:
-    """Carries vehicle data through admission and ticketing.
-    Callers supply a canonical plate used to identify an active stay.
+    """Identifies a vehicle during entry and checkout.
+
+    Callers supply a consistently formatted plate to identify its active stay.
     """
 
     plate: str
     type: VehicleType
 
-    # __post__init__ is unqieu to dataclasses, python auto generates it the __init__
-    # if I don't give one and then calls __post_init__, this is better to add validations
-    # in
+    # The generated dataclass __init__ assigns fields, then calls this validation hook.
     def __post_init__(self) -> None:
         if not self.plate.strip():
             raise ValueError("Plate must not be blank")
@@ -75,13 +76,14 @@ class Vehicle:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Ticket:
-    """Records a stay without exposing mutable parking state.
+    """Stores the stay's details at entry for later checkout and pricing.
+
     Checkout and pricing use the entry-time snapshot, including spot size.
     """
 
     id: str
-    # if it's a different entity, prefix with that
-    spot_id: str
+    # Prefix references with the entity name to distinguish them from this ticket's ID.
+    spot_id: int
     floor_id: int
     vehicle: Vehicle
     spot_size: SpotSize
@@ -93,7 +95,7 @@ class Receipt:
     ticket_id: str
     amount: Decimal
     method: str
-    # these are all ust timestamps
+    # Times use datetime values with UTC timezone information.
     paid_at: datetime
 
 
@@ -103,14 +105,16 @@ class Receipt:
 class Spot:
     __slots__ = ("_id", "_size", "_occupied_by")
 
-    def __init__(self, *, id: str, size: SpotSize) -> None:
+    def __init__(self, *, id: int, size: SpotSize) -> None:
+        # it makes some sense to keep spot ids as strs as then you can have it unique across
+        # rather that int indexes which are BOUND to collide across floors
+        # build_lot avoids collisions with one integer sequence across all floors.
         self._id, self._size = id, size
         self._occupied_by: Vehicle | None = None
 
-    # this whole charade is just to keep vars as _id and allow callers
-    # to read them
+    # Properties expose identity and size for reading; private fields rely on convention.
     @property
-    def id(self) -> str:
+    def id(self) -> int:
         return self._id
 
     @property
@@ -136,13 +140,14 @@ class Spot:
 
 
 class Floor:
-    """Owns spots and publishes committed availability changes.
-    Reads and mutations run during setup or under the owning lot's lock.
+    """Owns spots and notifies displays after availability changes.
+
+    Read or change state during setup or while holding the owning lot's lock.
     """
 
     def __init__(self, floor_id: int, spots: Iterable[Spot]) -> None:
         self._id = floor_id
-        self._spots: dict[str, Spot] = {}
+        self._spots: dict[int, Spot] = {}
         self._observers: list[Callable[[Floor], None]] = []
         for spot in spots:
             if spot.id in self._spots:
@@ -171,7 +176,7 @@ class Floor:
         return len(self._spots)
 
     def attach(self, observer: Callable[[Floor], None]) -> None:
-        """Registers a read-only display callback during construction."""
+        """Registers a display callback during setup; callbacks must only read state."""
         self._observers.append(observer)
 
     def _notify(self) -> None:
@@ -187,7 +192,7 @@ class Floor:
             raise SpotStateError(f"{spot.id} is not on floor {self.id}")
         spot._occupy(vehicle)
 
-    def _release(self, spot_id: str) -> None:
+    def _release(self, spot_id: int) -> None:
         spot = self._spots.get(spot_id)
         if spot is None:
             raise SpotStateError(f"{spot_id} is not on floor {self.id}")
@@ -201,7 +206,8 @@ Allocation = tuple[Floor, Spot]
 
 class AllocationStrategy(ABC):
     """Selects a spot without changing it.
-    The lot validates and commits the selection under its lock.
+
+    The lot checks the selection and occupies the spot under its lock.
     """
 
     @abstractmethod
@@ -224,6 +230,7 @@ class AnyFreeSpotAllocation(AllocationStrategy):
 
 class ParkingLot:
     """Keeps active tickets and occupied spots consistent under one lock.
+
     Panels use it for admission, ticket lookup, and internal checkout transitions.
     """
 
@@ -238,7 +245,7 @@ class ParkingLot:
         self._lock = RLock()
 
     def park(self, vehicle: Vehicle, now: datetime) -> Ticket:
-        """Admits one vehicle atomically; now must be an aware UTC timestamp."""
+        """Parks one vehicle under the lot lock; now must include UTC timezone information."""
         with self._lock:
             # shortcut: linear scans suit this example; index plates/spots for large lots.
             if any(t.vehicle.plate == vehicle.plate for t in self._active.values()):
@@ -274,6 +281,15 @@ class ParkingLot:
         """Holds checkout state stable while ExitPanel coordinates payment.
         A successful block releases the spot; an exception leaves it occupied.
         """
+
+        def release(ticket: Ticket) -> None:
+            if self._active.get(ticket.id) is not ticket:
+                raise InvalidTicketError(ticket.id)
+            floor = self._floors[ticket.floor_id]
+            floor._release(ticket.spot_id)
+            del self._active[ticket.id]
+            floor._notify()
+
         # shortcut: callbacks/payment hold the lot lock; redesign for remote payments.
         with self._lock:
             ticket = self.find_active(ticket_id)
@@ -282,18 +298,9 @@ class ParkingLot:
             self._checking_out.add(ticket_id)
             try:
                 yield ticket
-                self._release(ticket)
+                release(ticket)
             finally:
                 self._checking_out.remove(ticket_id)
-
-    def _release(self, ticket: Ticket) -> None:
-        # Only _checkout calls this, with the lot lock held.
-        if self._active.get(ticket.id) is not ticket:
-            raise InvalidTicketError(ticket.id)
-        floor = self._floors[ticket.floor_id]
-        floor._release(ticket.spot_id)
-        del self._active[ticket.id]
-        floor._notify()
 
     @property
     def free_count(self) -> int:
@@ -316,7 +323,8 @@ def money(value: Decimal) -> Decimal:
 
 class PricingStrategy(ABC):
     """Computes a fee without side effects.
-    Quotes and settlement supply aware UTC entry and exit timestamps.
+
+    Entry and exit times must include UTC timezone information.
     """
 
     @abstractmethod
@@ -324,7 +332,7 @@ class PricingStrategy(ABC):
 
 
 class HourlyPricing(PricingStrategy):
-    """Waives short stays, then charges started hours measured from entry."""
+    """Makes stays within the grace period free; otherwise charges each started hour from entry."""
 
     def __init__(
         self,
@@ -343,6 +351,7 @@ class HourlyPricing(PricingStrategy):
         if seconds < 0:
             raise ValueError("Exit time precedes entry time")
         if seconds <= self._grace_minutes * 60:
+            # full .00 matters for money as that'll be the str rep
             return Decimal("0.00")
         hours = ceil(seconds / 3600)
         return money(self._first_hour + self._later_hour * (hours - 1))
@@ -350,7 +359,8 @@ class HourlyPricing(PricingStrategy):
 
 class PaymentProcessor(ABC):
     """Returns a receipt only after successful payment.
-    ExitPanel retains the stay when charge raises PaymentFailedError or another error.
+
+    If charge() raises an exception, ExitPanel leaves the vehicle parked.
     """
 
     @abstractmethod
@@ -391,7 +401,7 @@ Clock = Callable[[], datetime]
 
 
 def system_clock() -> datetime:
-    # Explicit timestamps and injected clocks must follow the same UTC contract.
+    # Caller-supplied times and clocks must also use UTC.
     return datetime.now(UTC)
 
 
@@ -399,12 +409,13 @@ class EntryPanel:
     def __init__(self, lot: ParkingLot, clock: Clock = system_clock) -> None:
         self._lot, self._clock = lot, clock
 
-    def park(self, vehicle: Vehicle, now: datetime | None = None) -> Ticket:
-        return self._lot.park(vehicle, now if now is not None else self._clock())
+    def park(self, vehicle: Vehicle) -> Ticket:
+        return self._lot.park(vehicle, self._clock())
 
 
 class ExitPanel:
     """Coordinates pricing and payment before the lot releases a vehicle.
+
     Quotes are advisory; settlement prices the stay again under the shared lock.
     """
 
@@ -423,12 +434,12 @@ class ExitPanel:
             raise ValueError("Exit time precedes entry time")
         return money(self._pricing.price(ticket, at))
 
-    def quote(self, ticket_id: str, now: datetime | None = None) -> Decimal:
-        at = now if now is not None else self._clock()
+    def quote(self, ticket_id: str) -> Decimal:
+        at = self._clock()
         return self._price(self._lot.find_active(ticket_id), at)
 
-    def settle(self, ticket_id: str, now: datetime | None = None) -> Receipt:
-        at = now if now is not None else self._clock()
+    def settle(self, ticket_id: str) -> Receipt:
+        at = self._clock()
         with self._lot._checkout(ticket_id) as ticket:
             amount = self._price(ticket, at)
             if amount > 0:
@@ -452,13 +463,14 @@ def build_lot(specs: dict[int, FloorSpec]) -> ParkingLot:
         for quantity in spec.values()
     ):
         raise ValueError("Spot counts must be nonnegative integers")
+    spot_ids = count(1)
     floors = [
         Floor(
             floor_id,
             (
-                Spot(id=f"{floor_id}-{size.name}-{index}", size=size)
+                Spot(id=next(spot_ids), size=size)
                 for size, quantity in spec.items()
-                for index in range(1, quantity + 1)
+                for _ in range(quantity)
             ),
         )
         for floor_id, spec in specs.items()
@@ -467,20 +479,24 @@ def build_lot(specs: dict[int, FloorSpec]) -> ParkingLot:
 
 
 def main() -> None:
-    floor = Floor(1, [Spot(id="1-C1", size=SpotSize.COMPACT)])
+    floor = Floor(1, [Spot(id=1, size=SpotSize.COMPACT)])
     board = DisplayBoard(floor)
     lot = ParkingLot([floor], AnyFreeSpotAllocation())
     entry = EntryPanel(lot)
-    exit_panel = ExitPanel(lot, HourlyPricing(), CashPayment())
 
     print(board.render())
     ticket = entry.park(Vehicle(plate="KA01AB1234", type=VehicleType.CAR))
     print(f"Parked: {ticket.id} at {ticket.spot_id}")
     print(board.render())
 
-    exit_time = ticket.entry_time + timedelta(hours=2)
-    print(f"Quote after two hours: {exit_panel.quote(ticket.id, exit_time)}")
-    receipt = exit_panel.settle(ticket.id, exit_time)
+    exit_panel = ExitPanel(
+        lot,
+        HourlyPricing(),
+        CashPayment(),
+        clock=lambda: ticket.entry_time + timedelta(hours=2),
+    )
+    print(f"Quote after two hours: {exit_panel.quote(ticket.id)}")
+    receipt = exit_panel.settle(ticket.id)
     print(f"Paid: {receipt.amount} by {receipt.method}")
     print(board.render())
 
