@@ -24,6 +24,10 @@ Benchmark execution requires a populated PostgreSQL database and the tables, ext
 
 Use four-space indentation in Python, `snake_case` for functions and variables, and `PascalCase` for classes. Follow neighboring code and retain useful type annotations. Keep exercises self-contained and explanations close to their implementations. Use descriptive Markdown filenames and relative links for diagrams. No formatter or linter is currently configured.
 
+## Writing notes
+
+Use both the `prose` and `humanizer` skills whenever writing or revising notes in this repository. Apply `prose` while drafting, then use `humanizer` to edit the result. Preserve technical meaning, code examples, identifiers, commands, and links.
+
 ## Testing Guidelines
 
 No automated test suite, testing framework, or coverage threshold is configured. For behavioral changes, add focused assertions or standard-library `unittest` tests alongside the affected exercise; name test files `test_*.py`. Run them with `python -m unittest discover -s "Projects/<exercise>"`. Check edge cases and document any database-dependent validation separately from latency measurements.
