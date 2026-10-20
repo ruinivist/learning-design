@@ -24,9 +24,9 @@ Benchmark execution requires a populated PostgreSQL database and the tables, ext
 
 Use four-space indentation in Python, `snake_case` for functions and variables, and `PascalCase` for classes. Follow neighboring code and retain useful type annotations. Keep exercises self-contained and explanations close to their implementations. Use descriptive Markdown filenames and relative links for diagrams. No formatter or linter is currently configured.
 
-## Writing notes
+## Writing notes and code documentation
 
-Use both the `prose` and `humanizer` skills whenever writing or revising notes in this repository. Apply `prose` while drafting, then use `humanizer` to edit the result. Preserve technical meaning, code examples, identifiers, commands, and links.
+Use both the `prose` and `humanizer` skills whenever writing or revising notes, docstrings, or code comments in this repository. Apply `prose` while drafting, then use `humanizer` to edit the result. Preserve technical meaning, code behavior, examples, identifiers, commands, and links.
 
 ## Testing Guidelines
 

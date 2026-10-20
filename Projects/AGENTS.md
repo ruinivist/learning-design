@@ -17,6 +17,13 @@ can be written and explained within limited interview time.
 - **Brevity:** Keep line counts low through narrow scope and simple code, while
   preserving readability and the design concepts being practiced.
 
+## User preferences
+
+- Prefer a nested function for a helper used by only one function or method.
+  Define it near the top of its caller to keep its scope local and give the
+  operation a clear name. Keep it separate when nesting would hurt readability
+  or other callers need it.
+
 ## Scope and Validation
 
 Implement the core use case and only the supporting behavior needed to exercise
