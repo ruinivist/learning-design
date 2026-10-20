@@ -43,6 +43,9 @@ class SlidingWindowState:
 
 Just this above is only a type hint, nothing else, not even `None`.
 
+- Validations live in `__post_init__`
+- You almost always want `@dataclass(frozen=True, slots=True, kw_only=True)`
+
 ## Set ops
 
 - ensure key value => `set.set_default(key, value)`
