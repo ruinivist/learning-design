@@ -50,6 +50,10 @@ Just this above is only a type hint, nothing else, not even `None`.
 
 - ensure key value => `set.set_default(key, value)`
 
+## Map ops
+
+- Doing a exists first to raise and then a `[]` access is wasteful. Use `.get` and then check for `None`.
+
 ## Working with money
 
 ```python
