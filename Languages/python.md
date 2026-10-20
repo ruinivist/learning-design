@@ -43,6 +43,54 @@ class SlidingWindowState:
 
 Just this above is only a type hint, nothing else, not even `None`.
 
-## Default values on sets
+## Set ops
 
-`set.set_default(key, value)`
+- ensure key value => `set.set_default(key, value)`
+
+## Working with money
+
+```python
+
+from decimal import Decinmal, ROUND_HAF_UP
+
+price = Decimal("12.425")
+
+CENT = Decimal("0.01")
+
+result = price.quantize(
+    CENT,
+    rounding=ROUND_HALF_UP
+)
+
+print(f"Total: ${total:.2f}")
+```
+
+## Working with time
+
+Timestamps
+
+```python
+
+import time
+
+seconds = int(time.time())
+millis = time.time_ns() // 1_000_000
+
+# if you only need elapsed time with no grounding
+time.monotonic_ns()
+time.monotonic()
+```
+
+Deltas
+
+```python
+from datetime import datetime, timedelta
+
+now = datetime.now()
+
+print(now)         # Date and time (datetime.datetime)
+print(now.date())  # Date only (datetime.date)
+print(now.time())  # Time only (datetime.time)
+
+end = meeting + timedelta(hours=2, minutes=15)
+```
