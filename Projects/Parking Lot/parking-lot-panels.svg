@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1950 1010" role="img" aria-labelledby="title desc">
+  <title id="title">Sessions: entry, pricing, and payment</title>
+  <desc id="desc">EntryPanel and ExitPanel reference the lot and receive clocks. ExitPanel delegates pricing and payment to separate abstract contracts. The lot releases the occupied spot only when its checkout block succeeds.</desc>
+  <defs>
+    <marker id="open" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 2 L12 7 L2 12" fill="none" stroke="black" stroke-width="2" />
+    </marker>
+    <marker id="triangle" markerWidth="20" markerHeight="20" refX="18" refY="10" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L18 10 L1 19 Z" fill="white" stroke="black" stroke-width="2" />
+    </marker>
+  </defs>
+  <rect width="100%" height="100%" fill="white" />
+  <g font-family="DejaVu Sans, sans-serif" fill="black">
+    <text x="975" y="43" font-size="31" fill="black" text-anchor="middle" font-weight="bold">Sessions: entry, pricing, and payment</text>
+    <text x="975" y="79" font-size="20" fill="black" text-anchor="middle">Blue: logic     Green: data/state     Purple: contract</text>
+    <g id="EntryPanel">
+      <rect x="60" y="140" width="480" height="188" fill="white" stroke="black" stroke-width="2" />
+    <text x="300" y="173" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">EntryPanel</text>
+    <path d="M60 190 H540" fill="none" stroke="black" stroke-width="2" />
+    <text x="78" y="223" font-size="20" fill="black" text-anchor="start">- _lot: ParkingLot</text>
+    <text x="78" y="253" font-size="20" fill="black" text-anchor="start">- _clock: Clock</text>
+    <path d="M60 274 H540" fill="none" stroke="black" stroke-width="2" />
+    <text x="78" y="307" font-size="20" fill="black" text-anchor="start">+ park(vehicle: Vehicle): Ticket</text>
+    </g>
+    <g id="ParkingLot">
+      <rect x="710" y="140" width="520" height="218" fill="white" stroke="black" stroke-width="2" />
+    <text x="970" y="173" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">ParkingLot</text>
+    <path d="M710 190 H1230" fill="none" stroke="black" stroke-width="2" />
+    <text x="728" y="223" font-size="20" fill="black" text-anchor="start">- _active: dict[str, Ticket]</text>
+    <path d="M710 244 H1230" fill="none" stroke="black" stroke-width="2" />
+    <text x="728" y="277" font-size="20" fill="black" text-anchor="start">+ park(vehicle, now): Ticket</text>
+    <text x="728" y="307" font-size="20" fill="black" text-anchor="start">+ find_active(ticket_id: str): Ticket</text>
+    <text x="728" y="337" font-size="20" fill="black" text-anchor="start">- _checkout(ticket_id: str)</text>
+    </g>
+    <g id="ExitPanel">
+      <rect x="1390" y="140" width="500" height="278" fill="white" stroke="black" stroke-width="2" />
+    <text x="1640" y="173" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">ExitPanel</text>
+    <path d="M1390 190 H1890" fill="none" stroke="black" stroke-width="2" />
+    <text x="1408" y="223" font-size="20" fill="black" text-anchor="start">- _lot: ParkingLot</text>
+    <text x="1408" y="253" font-size="20" fill="black" text-anchor="start">- _clock: Clock</text>
+    <text x="1408" y="283" font-size="20" fill="black" text-anchor="start">- _pricing: PricingStrategy</text>
+    <text x="1408" y="313" font-size="20" fill="black" text-anchor="start">- _payment: PaymentProcessor</text>
+    <path d="M1390 334 H1890" fill="none" stroke="black" stroke-width="2" />
+    <text x="1408" y="367" font-size="20" fill="black" text-anchor="start">+ quote(ticket_id: str): Decimal</text>
+    <text x="1408" y="397" font-size="20" fill="black" text-anchor="start">+ settle(ticket_id: str): Receipt</text>
+    </g>
+    <g id="PricingStrategy">
+      <rect x="60" y="640" width="780" height="134" fill="white" stroke="black" stroke-width="2" />
+    <text x="450" y="667" font-size="20" fill="#7435a0" text-anchor="middle">«abstract»</text>
+    <text x="450" y="703" font-size="25" fill="#7435a0" text-anchor="middle" font-weight="bold">PricingStrategy</text>
+    <path d="M60 720 H840" fill="none" stroke="black" stroke-width="2" />
+    <text x="78" y="753" font-size="20" fill="black" text-anchor="start">+ price(ticket: Ticket, exit_time: datetime): Decimal</text>
+    </g>
+    <g id="PaymentProcessor">
+      <rect x="1070" y="640" width="820" height="134" fill="white" stroke="black" stroke-width="2" />
+    <text x="1480" y="667" font-size="20" fill="#7435a0" text-anchor="middle">«abstract»</text>
+    <text x="1480" y="703" font-size="25" fill="#7435a0" text-anchor="middle" font-weight="bold">PaymentProcessor</text>
+    <path d="M1070 720 H1890" fill="none" stroke="black" stroke-width="2" />
+    <text x="1088" y="753" font-size="20" fill="black" text-anchor="start">+ charge(amount: Decimal, ticket_id: str, now: datetime): Receipt</text>
+    </g>
+    <g id="HourlyPricing">
+      <rect x="60" y="890" width="780" height="50" fill="white" stroke="black" stroke-width="2" />
+    <text x="450" y="923" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">HourlyPricing</text>
+    </g>
+    <g id="CashPayment">
+      <rect x="1070" y="890" width="820" height="50" fill="white" stroke="black" stroke-width="2" />
+    <text x="1480" y="923" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">CashPayment</text>
+    </g>
+    <path d="M540 240 H710" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)" />
+    <text x="625" y="221" font-size="19" fill="black" text-anchor="middle">lot: 1</text>
+    <path d="M1390 240 H1230" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)" />
+    <text x="1310" y="221" font-size="19" fill="black" text-anchor="middle">lot: 1</text>
+    <path d="M1480 418 V550 H450 V640" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)" />
+    <text x="470" y="610" font-size="19" fill="black" text-anchor="start">pricing: 1</text>
+    <path d="M1740 418 V640" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)" />
+    <text x="1760" y="610" font-size="19" fill="black" text-anchor="start">payment: 1</text>
+    <path d="M450 890 V774" fill="none" stroke="black" stroke-width="2" marker-end="url(#triangle)" />
+    <path d="M1480 890 V774" fill="none" stroke="black" stroke-width="2" marker-end="url(#triangle)" />
+    <path d="M970 358 V420" fill="none" stroke="black" stroke-width="2" stroke-dasharray="9 7" />
+    <path d="M710 420 H1210 L1230 440 V504 H710 Z M1210 420 V440 H1230" fill="white" stroke="black" stroke-width="2" />
+    <text x="728" y="453" font-size="20" fill="black" text-anchor="start">_checkout() yields the active Ticket.</text>
+    <text x="728" y="483" font-size="20" fill="black" text-anchor="start">A successful block permits release.</text>
+    <text x="975" y="985" font-size="19" fill="black" text-anchor="middle">Open V: reference     Hollow triangle: inheritance     Clock = callable returning datetime</text>
+  </g>
+</svg>

@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 850" role="img" aria-labelledby="title desc">
+  <title id="title">Core lot: structure</title>
+  <desc id="desc">The lot owns floors and each floor owns spots. A spot references at most one immutable vehicle. Only structure and occupancy fields are shown.</desc>
+  <defs>
+    <marker id="open" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 2 L12 7 L2 12" fill="none" stroke="black" stroke-width="2" />
+    </marker>
+    <marker id="triangle" markerWidth="20" markerHeight="20" refX="18" refY="10" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L18 10 L1 19 Z" fill="white" stroke="black" stroke-width="2" />
+    </marker>
+  </defs>
+  <rect width="100%" height="100%" fill="white" />
+  <g font-family="DejaVu Sans, sans-serif" fill="black">
+    <text x="620" y="43" font-size="31" fill="black" text-anchor="middle" font-weight="bold">Core lot: structure</text>
+    <text x="620" y="79" font-size="20" fill="black" text-anchor="middle">Blue: logic     Green: data/state     Purple: contract</text>
+    <g id="ParkingLot">
+      <rect x="60" y="140" width="500" height="104" fill="white" stroke="black" stroke-width="2" />
+    <text x="310" y="173" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">ParkingLot</text>
+    <path d="M60 190 H560" fill="none" stroke="black" stroke-width="2" />
+    <text x="78" y="223" font-size="20" fill="black" text-anchor="start">- _floors: dict[int, Floor]</text>
+    </g>
+    <g id="Floor">
+      <rect x="60" y="360" width="500" height="134" fill="white" stroke="black" stroke-width="2" />
+    <text x="310" y="393" font-size="25" fill="#18713a" text-anchor="middle" font-weight="bold">Floor</text>
+    <path d="M60 410 H560" fill="none" stroke="black" stroke-width="2" />
+    <text x="78" y="443" font-size="20" fill="black" text-anchor="start">+ id: int {readOnly}</text>
+    <text x="78" y="473" font-size="20" fill="black" text-anchor="start">- _spots: dict[int, Spot]</text>
+    </g>
+    <g id="Spot">
+      <rect x="680" y="360" width="500" height="164" fill="white" stroke="black" stroke-width="2" />
+    <text x="930" y="393" font-size="25" fill="#18713a" text-anchor="middle" font-weight="bold">Spot</text>
+    <path d="M680 410 H1180" fill="none" stroke="black" stroke-width="2" />
+    <text x="698" y="443" font-size="20" fill="black" text-anchor="start">+ id: int {readOnly}</text>
+    <text x="698" y="473" font-size="20" fill="black" text-anchor="start">+ size: SpotSize {readOnly}</text>
+    <text x="698" y="503" font-size="20" fill="black" text-anchor="start">- _occupied_by: Vehicle | None</text>
+    </g>
+    <g id="Vehicle">
+      <rect x="680" y="650" width="500" height="134" fill="white" stroke="black" stroke-width="2" />
+    <text x="930" y="683" font-size="25" fill="#18713a" text-anchor="middle" font-weight="bold">Vehicle</text>
+    <path d="M680 700 H1180" fill="none" stroke="black" stroke-width="2" />
+    <text x="698" y="733" font-size="20" fill="black" text-anchor="start">+ plate: str {readOnly}</text>
+    <text x="698" y="763" font-size="20" fill="black" text-anchor="start">+ type: VehicleType {readOnly}</text>
+    </g>
+    <path d="M310 244 l10 12 l-10 12 l-10 -12 Z" fill="black" stroke="black" stroke-width="2" />
+    <path d="M310 268 V360" fill="none" stroke="black" stroke-width="2" />
+    <text x="333" y="284" font-size="18" fill="black" text-anchor="start">1</text>
+    <text x="333" y="345" font-size="18" fill="black" text-anchor="start">0..*</text>
+    <path d="M560 430 l12 -10 l12 10 l-12 10 Z" fill="black" stroke="black" stroke-width="2" />
+    <path d="M584 430 H680" fill="none" stroke="black" stroke-width="2" />
+    <text x="590" y="412" font-size="18" fill="black" text-anchor="start">1</text>
+    <text x="635" y="412" font-size="18" fill="black" text-anchor="start">0..*</text>
+    <path d="M930 524 V650" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)" />
+    <text x="953" y="552" font-size="18" fill="black" text-anchor="start">0..1</text>
+    <text x="953" y="633" font-size="18" fill="black" text-anchor="start">0..1</text>
+    <text x="953" y="594" font-size="19" fill="black" text-anchor="start">occupant</text>
+    <text x="620" y="825" font-size="18" fill="black" text-anchor="middle">Filled diamond: owns parts     Open V: reference     Numbers: multiplicity</text>
+  </g>
+</svg>

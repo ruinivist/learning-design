@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1100" role="img" aria-labelledby="title desc">
+  <title id="title">Core lot: allocation</title>
+  <desc id="desc">ParkingLot delegates selection to an abstract AllocationStrategy. AnyFreeSpotAllocation specializes it. Floor and Spot validate and apply occupancy changes.</desc>
+  <defs>
+    <marker id="open" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 2 L12 7 L2 12" fill="none" stroke="black" stroke-width="2" />
+    </marker>
+    <marker id="triangle" markerWidth="20" markerHeight="20" refX="18" refY="10" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L18 10 L1 19 Z" fill="white" stroke="black" stroke-width="2" />
+    </marker>
+  </defs>
+  <rect width="100%" height="100%" fill="white" />
+  <g font-family="DejaVu Sans, sans-serif" fill="black">
+    <text x="720" y="43" font-size="31" fill="black" text-anchor="middle" font-weight="bold">Core lot: allocation</text>
+    <text x="720" y="79" font-size="20" fill="black" text-anchor="middle">Blue: logic     Green: data/state     Purple: contract</text>
+    <g id="ParkingLot">
+      <rect x="60" y="140" width="620" height="158" fill="white" stroke="black" stroke-width="2" />
+    <text x="370" y="173" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">ParkingLot</text>
+    <path d="M60 190 H680" fill="none" stroke="black" stroke-width="2" />
+    <text x="78" y="223" font-size="20" fill="black" text-anchor="start">- _allocation: AllocationStrategy</text>
+    <path d="M60 244 H680" fill="none" stroke="black" stroke-width="2" />
+    <text x="78" y="277" font-size="20" fill="black" text-anchor="start">+ park(...)</text>
+    </g>
+    <g id="AllocationStrategy">
+      <rect x="830" y="140" width="550" height="134" fill="white" stroke="black" stroke-width="2" />
+    <text x="1105" y="167" font-size="20" fill="#7435a0" text-anchor="middle">«abstract»</text>
+    <text x="1105" y="203" font-size="25" fill="#7435a0" text-anchor="middle" font-weight="bold">AllocationStrategy</text>
+    <path d="M830 220 H1380" fill="none" stroke="black" stroke-width="2" />
+    <text x="848" y="253" font-size="20" fill="black" text-anchor="start">+ choose(floors, vehicle): Allocation | None</text>
+    </g>
+    <g id="AnyFreeSpotAllocation">
+      <rect x="830" y="410" width="550" height="104" fill="white" stroke="black" stroke-width="2" />
+    <text x="1105" y="443" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">AnyFreeSpotAllocation</text>
+    <path d="M830 460 H1380" fill="none" stroke="black" stroke-width="2" />
+    <text x="848" y="493" font-size="20" fill="black" text-anchor="start">+ choose(floors, vehicle): Allocation | None</text>
+    </g>
+    <g id="Floor">
+      <rect x="60" y="460" width="620" height="188" fill="white" stroke="black" stroke-width="2" />
+    <text x="370" y="493" font-size="25" fill="#18713a" text-anchor="middle" font-weight="bold">Floor</text>
+    <path d="M60 510 H680" fill="none" stroke="black" stroke-width="2" />
+    <text x="78" y="543" font-size="20" fill="black" text-anchor="start">+ free_spots: tuple[Spot, ...] {readOnly}</text>
+    <path d="M60 564 H680" fill="none" stroke="black" stroke-width="2" />
+    <text x="78" y="597" font-size="20" fill="black" text-anchor="start">- _take(spot: Spot, vehicle: Vehicle): None</text>
+    <text x="78" y="627" font-size="20" fill="black" text-anchor="start">- _release(spot_id: int): None</text>
+    </g>
+    <g id="Spot">
+      <rect x="60" y="800" width="620" height="218" fill="white" stroke="black" stroke-width="2" />
+    <text x="370" y="833" font-size="25" fill="#18713a" text-anchor="middle" font-weight="bold">Spot</text>
+    <path d="M60 850 H680" fill="none" stroke="black" stroke-width="2" />
+    <text x="78" y="883" font-size="20" fill="black" text-anchor="start">+ is_free: bool {readOnly}</text>
+    <path d="M60 904 H680" fill="none" stroke="black" stroke-width="2" />
+    <text x="78" y="937" font-size="20" fill="black" text-anchor="start">+ can_fit(vehicle: Vehicle): bool</text>
+    <text x="78" y="967" font-size="20" fill="black" text-anchor="start">- _occupy(vehicle: Vehicle): None</text>
+    <text x="78" y="997" font-size="20" fill="black" text-anchor="start">- _free(): None</text>
+    </g>
+    <path d="M680 220 H830" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)" />
+    <text x="755" y="203" font-size="18" fill="black" text-anchor="middle">allocation: 1</text>
+    <path d="M1105 410 V274" fill="none" stroke="black" stroke-width="2" marker-end="url(#triangle)" />
+    <text x="1128" y="347" font-size="19" fill="black" text-anchor="start">inherits</text>
+    <path d="M370 298 V460" fill="none" stroke="black" stroke-width="2" stroke-dasharray="9 7" marker-end="url(#open)" />
+    <text x="390" y="384" font-size="19" fill="black" text-anchor="start">delegates mutation</text>
+    <path d="M370 648 V800" fill="none" stroke="black" stroke-width="2" stroke-dasharray="9 7" marker-end="url(#open)" />
+    <text x="390" y="729" font-size="19" fill="black" text-anchor="start">validates and changes occupancy</text>
+    <path d="M830 620 H1360 L1380 640 V704 H830 Z M1360 620 V640 H1380" fill="white" stroke="black" stroke-width="2" />
+    <text x="848" y="653" font-size="20" fill="black" text-anchor="start">Allocation = tuple[Floor, Spot]</text>
+    <text x="848" y="683" font-size="20" fill="black" text-anchor="start">choose() returns None when no spot fits.</text>
+    <text x="720" y="1075" font-size="18" fill="black" text-anchor="middle">Open V: reference/use     Hollow triangle: inheritance     Dashed arrow: dependency</text>
+  </g>
+</svg>
