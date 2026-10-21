@@ -101,3 +101,7 @@ print(now.time())  # Time only (datetime.time)
 
 end = meeting + timedelta(hours=2, minutes=15)
 ```
+
+## Exceptions
+
+- For validations use `ValueError("string explanation")`
