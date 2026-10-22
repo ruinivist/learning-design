@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="950" viewBox="0 0 1500 950" role="img" aria-labelledby="title desc">
+<title id="title">Logger: bounded asynchronous delivery</title><desc id="desc">The manager creates a dispatcher. Caller threads submit logger and record pairs; the dispatcher worker calls Logger.handle and tracks task completion.</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto"><path d="M1 1 L11 6 L1 11" fill="none" stroke="black" stroke-width="1.5"/></marker>
+<marker id="triangle" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="16" markerHeight="16" orient="auto"><path d="M1 1 L15 8 L1 15 Z" fill="white" stroke="black" stroke-width="1.4"/></marker>
+<marker id="diamond" viewBox="0 0 20 14" refX="19" refY="7" markerWidth="20" markerHeight="14" orient="auto-start-reverse"><path d="M1 7 L10 1 L19 7 L10 13 Z" fill="black" stroke="black"/></marker>
+</defs>
+<style>text { font-family: 'DejaVu Sans', sans-serif; fill: black; font-size: 20px; } .title { font-size:31px; font-weight:bold; } .name { font-size:25px; font-weight:bold; } .small {font-size:18px;} .logic {fill:#1856a6;} .data {fill:#18713a;} .contract {fill:#7435a0;} .messaging {fill:#b36313;} .edge {fill:none;stroke:black;stroke-width:2;} .dashed {stroke-dasharray:9 7;}</style>
+<rect width="1500" height="950" fill="white"/>
+<text x="750.0" y="50" class="title" text-anchor="middle">Logger: bounded asynchronous delivery</text>
+<text x="750.0" y="90" text-anchor="middle"><tspan class="logic">Blue: logic</tspan> · <tspan class="data">Green: data</tspan> · <tspan class="contract">Purple: contracts</tspan> · <tspan class="messaging">Orange: queue state</tspan></text>
+<g><rect x="70" y="170" width="520" height="170" fill="white" stroke="black" stroke-width="2"/><text x="330.0" y="210" text-anchor="middle" class="name logic">LogManager</text><path d="M70 232 H590" class="edge"/><text x="88" y="263">+ dispatcher: Dispatcher</text><path d="M70 286 H590" class="edge"/><text x="88" y="317">+ flush(); shutdown()</text></g>
+<g><rect x="890" y="170" width="560" height="325" fill="white" stroke="black" stroke-width="2"/><text x="1170.0" y="210" text-anchor="middle" class="name logic">Dispatcher</text><path d="M890 232 H1450" class="edge"/><text x="908" y="263">+ q: Queue[(Logger, Record)]</text><text x="908" y="294">+ capacity_threshold: int</text><text x="908" y="325">+ closed: bool; dropped: int</text><text x="908" y="356">+ thread: Thread</text><path d="M890 379 H1450" class="edge"/><text x="908" y="410">+ submit(logger, record)</text><text x="908" y="441">+ flush(); shutdown()</text><text x="908" y="472">− _run()</text></g>
+<g><rect x="70" y="630" width="520" height="201" fill="white" stroke="black" stroke-width="2"/><text x="330.0" y="670" text-anchor="middle" class="name logic">Logger</text><path d="M70 692 H590" class="edge"/><text x="88" y="723">+ dispatcher: Dispatcher</text><path d="M70 746 H590" class="edge"/><text x="88" y="777">+ log(level, msg, *args)</text><text x="88" y="808">+ handle(record)</text></g>
+<path d="M590 260 H890" class="edge" marker-start="url(#diamond)"/>
+<text x="735" y="235" class="small" text-anchor="middle">creates one worker</text>
+<text x="860" y="285" class="small" text-anchor="start">1</text>
+<path d="M590 700 H760 V410 H890" class="edge" marker-end="url(#arrow)"/>
+<text x="670" y="675" class="small" text-anchor="middle">submits to</text>
+<text x="857" y="433" class="small" text-anchor="start">1</text>
+<path d="M1450 460 H1480 V860 H330 V831" class="edge dashed" marker-end="url(#arrow)"/>
+<text x="850" y="895" class="small" text-anchor="middle">worker calls handle(record), then q.task_done()</text>
+<path d="M70 360 H570 L590 380 V510 H70 Z M570 360 V380 H590" fill="white" stroke="black" stroke-width="2"/><text x="88" y="394" class="small" text-anchor="start">Queue entries retain (logger, record).</text>
+<text x="88" y="423" class="small" text-anchor="start">DEBUG/INFO may drop near capacity.</text>
+<text x="88" y="452" class="small" text-anchor="start">WARN/ERROR wait for queue space.</text>
+<text x="88" y="481" class="small" text-anchor="start">A passed size check can still block.</text>
+<path d="M890 630 H1430 L1450 650 V780 H890 Z M1430 630 V650 H1450" fill="white" stroke="black" stroke-width="2"/><text x="908" y="664" class="small" text-anchor="start">flush(): wait for queued tasks.</text>
+<text x="908" y="693" class="small" text-anchor="start">After producers stop, shutdown():</text>
+<text x="908" y="722" class="small" text-anchor="start">mark closed → enqueue stop → join.</text>
+<text x="908" y="751" class="small" text-anchor="start">Manager then closes attached sinks.</text>
+<path d="M590 430 H650 V350 H890" class="edge dashed"/>
+<path d="M1170 630 V495" class="edge dashed"/>
+
+</svg>

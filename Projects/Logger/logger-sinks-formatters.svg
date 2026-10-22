@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1720" height="1030" viewBox="0 0 1720 1030" role="img" aria-labelledby="title desc">
+<title id="title">Logger: destinations and representation</title><desc id="desc">Loggers notify attached sinks. Each sink uses a formatter; sink subclasses supply output and formatter subclasses supply representation.</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto"><path d="M1 1 L11 6 L1 11" fill="none" stroke="black" stroke-width="1.5"/></marker>
+<marker id="triangle" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="16" markerHeight="16" orient="auto"><path d="M1 1 L15 8 L1 15 Z" fill="white" stroke="black" stroke-width="1.4"/></marker>
+<marker id="diamond" viewBox="0 0 20 14" refX="19" refY="7" markerWidth="20" markerHeight="14" orient="auto-start-reverse"><path d="M1 7 L10 1 L19 7 L10 13 Z" fill="black" stroke="black"/></marker>
+</defs>
+<style>text { font-family: 'DejaVu Sans', sans-serif; fill: black; font-size: 20px; } .title { font-size:31px; font-weight:bold; } .name { font-size:25px; font-weight:bold; } .small {font-size:18px;} .logic {fill:#1856a6;} .data {fill:#18713a;} .contract {fill:#7435a0;} .messaging {fill:#b36313;} .edge {fill:none;stroke:black;stroke-width:2;} .dashed {stroke-dasharray:9 7;}</style>
+<rect width="1720" height="1030" fill="white"/>
+<text x="860.0" y="50" class="title" text-anchor="middle">Logger: destinations and representation</text>
+<text x="860.0" y="90" text-anchor="middle"><tspan class="logic">Blue: logic</tspan> · <tspan class="data">Green: data</tspan> · <tspan class="contract">Purple: contracts</tspan> · <tspan class="messaging">Orange: queue state</tspan></text>
+<g><rect x="60" y="180" width="400" height="232" fill="white" stroke="black" stroke-width="2"/><text x="260.0" y="220" text-anchor="middle" class="name logic">Logger</text><path d="M60 242 H460" class="edge"/><text x="78" y="273">+ sinks: tuple[Sink, ...]</text><text x="78" y="304">+ propagate: bool</text><path d="M60 327 H460" class="edge"/><text x="78" y="358">+ attach(sink); detach(sink)</text><text x="78" y="389">+ notify(record); handle(record)</text></g>
+<g><rect x="650" y="180" width="440" height="284" fill="white" stroke="black" stroke-width="2"/><text x="870.0" y="208" text-anchor="middle" class="small">«abstract»</text><text x="870.0" y="241" text-anchor="middle" class="name contract">Sink</text><path d="M650 263 H1090" class="edge"/><text x="668" y="294">+ level: Level</text><text x="668" y="325">+ formatter: Formatter</text><path d="M650 348 H1090" class="edge"/><text x="668" y="379">+ emit(record)</text><text x="668" y="410">+ write(line) {abstract}</text><text x="668" y="441">+ close()</text></g>
+<g><rect x="1240" y="180" width="420" height="137" fill="white" stroke="black" stroke-width="2"/><text x="1450.0" y="208" text-anchor="middle" class="small">«abstract»</text><text x="1450.0" y="241" text-anchor="middle" class="name contract">Formatter</text><path d="M1240 263 H1660" class="edge"/><text x="1258" y="294">+ format(record) → str {abstract}</text></g>
+<g><rect x="60" y="760" width="350" height="170" fill="white" stroke="black" stroke-width="2"/><text x="235.0" y="800" text-anchor="middle" class="name logic">ConsoleSink</text><path d="M60 822 H410" class="edge"/><text x="78" y="853">+ stream: TextIO</text><path d="M60 876 H410" class="edge"/><text x="78" y="907">+ write(line)</text></g>
+<g><rect x="480" y="760" width="350" height="170" fill="white" stroke="black" stroke-width="2"/><text x="655.0" y="800" text-anchor="middle" class="name logic">FileSink</text><path d="M480 822 H830" class="edge"/><text x="498" y="853">+ file: TextIO</text><path d="M480 876 H830" class="edge"/><text x="498" y="907">+ write(line); close()</text></g>
+<g><rect x="900" y="760" width="350" height="170" fill="white" stroke="black" stroke-width="2"/><text x="1075.0" y="800" text-anchor="middle" class="name logic">MemorySink</text><path d="M900 822 H1250" class="edge"/><text x="918" y="853">+ lines: list[str]</text><path d="M900 876 H1250" class="edge"/><text x="918" y="907">+ write(line)</text></g>
+<g><rect x="1240" y="460" width="420" height="116" fill="white" stroke="black" stroke-width="2"/><text x="1450.0" y="500" text-anchor="middle" class="name logic">PlainFormatter</text><path d="M1240 522 H1660" class="edge"/><text x="1258" y="553">+ format(record) → str</text></g>
+<g><rect x="1240" y="640" width="420" height="116" fill="white" stroke="black" stroke-width="2"/><text x="1450.0" y="680" text-anchor="middle" class="name logic">JsonFormatter</text><path d="M1240 702 H1660" class="edge"/><text x="1258" y="733">+ format(record) → str</text></g>
+<path d="M460 300 H650" class="edge" marker-end="url(#arrow)"/>
+<text x="555" y="275" class="small" text-anchor="middle">notifies</text>
+<text x="590" y="326" class="small" text-anchor="start">0..*</text>
+<path d="M1090 290 H1240" class="edge" marker-end="url(#arrow)"/>
+<text x="1165" y="265" class="small" text-anchor="middle">formats with</text>
+<text x="1205" y="317" class="small" text-anchor="start">1</text>
+<path d="M235 760 V650 H1075 V760" class="edge"/>
+<path d="M655 760 V650" class="edge"/>
+<path d="M870 650 V464" class="edge" marker-end="url(#triangle)"/>
+<path d="M1240 510 H1180 V390 H1450" class="edge"/>
+<path d="M1450 390 V317" class="edge" marker-end="url(#triangle)"/>
+<path d="M1240 690 H1180 V510" class="edge"/>
+<text x="80" y="990" class="small" text-anchor="start">Hollow triangle: inheritance. Sink.emit() checks level → formats → writes.</text>
+
+</svg>

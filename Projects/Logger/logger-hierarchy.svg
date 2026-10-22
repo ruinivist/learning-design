@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1000" viewBox="0 0 1500 1000" role="img" aria-labelledby="title desc">
+<title id="title">Logger: hierarchy and admitted records</title><desc id="desc">The manager owns and reuses logger nodes. A logger inherits its admission threshold and creates a frozen record after admission.</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto"><path d="M1 1 L11 6 L1 11" fill="none" stroke="black" stroke-width="1.5"/></marker>
+<marker id="triangle" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="16" markerHeight="16" orient="auto"><path d="M1 1 L15 8 L1 15 Z" fill="white" stroke="black" stroke-width="1.4"/></marker>
+<marker id="diamond" viewBox="0 0 20 14" refX="19" refY="7" markerWidth="20" markerHeight="14" orient="auto-start-reverse"><path d="M1 7 L10 1 L19 7 L10 13 Z" fill="black" stroke="black"/></marker>
+</defs>
+<style>text { font-family: 'DejaVu Sans', sans-serif; fill: black; font-size: 20px; } .title { font-size:31px; font-weight:bold; } .name { font-size:25px; font-weight:bold; } .small {font-size:18px;} .logic {fill:#1856a6;} .data {fill:#18713a;} .contract {fill:#7435a0;} .messaging {fill:#b36313;} .edge {fill:none;stroke:black;stroke-width:2;} .dashed {stroke-dasharray:9 7;}</style>
+<rect width="1500" height="1000" fill="white"/>
+<text x="750.0" y="50" class="title" text-anchor="middle">Logger: hierarchy and admitted records</text>
+<text x="750.0" y="90" text-anchor="middle"><tspan class="logic">Blue: logic</tspan> · <tspan class="data">Green: data</tspan> · <tspan class="contract">Purple: contracts</tspan> · <tspan class="messaging">Orange: queue state</tspan></text>
+<g><rect x="90" y="170" width="540" height="232" fill="white" stroke="black" stroke-width="2"/><text x="360.0" y="210" text-anchor="middle" class="name logic">LogManager</text><path d="M90 232 H630" class="edge"/><text x="108" y="263">+ root: Logger</text><text x="108" y="294">+ loggers: dict[str, Logger]</text><text x="108" y="325">+ lock: Lock</text><path d="M90 348 H630" class="edge"/><text x="108" y="379">+ get_logger(name) → Logger</text></g>
+<g><rect x="90" y="590" width="540" height="263" fill="white" stroke="black" stroke-width="2"/><text x="360.0" y="630" text-anchor="middle" class="name logic">Logger</text><path d="M90 652 H630" class="edge"/><text x="108" y="683">+ name: str; parent: Logger [0..1]</text><text x="108" y="714">+ level: Level [0..1]</text><text x="108" y="745">+ clock: Callable[[], datetime]</text><path d="M90 768 H630" class="edge"/><text x="108" y="799">+ effective_level() → Level</text><text x="108" y="830">+ log(level, msg, *args)</text></g>
+<g><rect x="900" y="590" width="550" height="232" fill="white" stroke="black" stroke-width="2"/><text x="1175.0" y="630" text-anchor="middle" class="name data">Record</text><path d="M900 652 H1450" class="edge"/><text x="918" y="683">+ origin: str; level: Level {readOnly}</text><text x="918" y="714">+ ts: datetime {readOnly}</text><text x="918" y="745">+ msg: str; args: tuple {readOnly}</text><path d="M900 768 H1450" class="edge"/><text x="918" y="799">+ message() → str</text></g>
+<path d="M360 402 V590" class="edge" marker-start="url(#diamond)"/>
+<text x="385" y="505" class="small" text-anchor="start">creates hierarchy</text>
+<text x="375" y="570" class="small" text-anchor="start">1..*</text>
+<path d="M90 690 H35 V530 H220 V590" class="edge" marker-end="url(#arrow)"/>
+<text x="45" y="510" class="small" text-anchor="start">parent 0..1</text>
+<path d="M630 725 H900" class="edge dashed" marker-end="url(#arrow)"/>
+<text x="755" y="700" class="small" text-anchor="middle">creates after admission</text>
+<path d="M900 170 H1430 L1450 190 V320 H900 Z M1430 170 V190 H1450" fill="white" stroke="black" stroke-width="2"/><text x="918" y="204" class="small" text-anchor="start">Root starts at WARN.</text>
+<text x="918" y="233" class="small" text-anchor="start">A child with level=None inherits a level.</text>
+<text x="918" y="262" class="small" text-anchor="start">Record.origin keeps the child name.</text>
+<text x="918" y="291" class="small" text-anchor="start">Delivery is added in later parts.</text>
+<path d="M1175 320 V590" class="edge dashed"/>
+
+</svg>
