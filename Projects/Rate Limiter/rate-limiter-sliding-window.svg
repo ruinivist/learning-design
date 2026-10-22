@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 790" role="img" aria-labelledby="title desc">
+<title id="title">Rate limiter: sliding window</title>
+<desc id="desc">SlidingWindowPolicy inherits the shared policy contract and owns one SlidingWindowState per tracked key. Selected members are shown.</desc>
+<defs>
+  <marker id="open" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto" markerUnits="userSpaceOnUse">
+    <path d="M2 2 L12 7 L2 12" fill="none" stroke="black" stroke-width="2"/>
+  </marker>
+  <marker id="triangle" markerWidth="20" markerHeight="20" refX="18" refY="10" orient="auto" markerUnits="userSpaceOnUse">
+    <path d="M1 1 L18 10 L1 19 Z" fill="white" stroke="black" stroke-width="2"/>
+  </marker>
+</defs>
+<rect width="100%" height="100%" fill="white"/>
+<g font-family="DejaVu Sans, sans-serif" fill="black">
+<text x="750" y="43" font-size="31" fill="black" text-anchor="middle" font-weight="bold">Rate limiter: sliding window</text>
+<text x="750" y="79" font-size="20" fill="black" text-anchor="middle">Blue: logic     Green: data/state     Purple: contract</text>
+<g id="RateLimitPolicy">
+<rect x="60" y="130" width="610" height="124" fill="white" stroke="black" stroke-width="2"/>
+<text x="365.0" y="158" font-size="20" fill="#7435a0" text-anchor="middle">«abstract»</text>
+<text x="365.0" y="193" font-size="25" fill="#7435a0" text-anchor="middle" font-weight="bold">RateLimitPolicy</text>
+<path d="M60 210 H670" fill="none" stroke="black" stroke-width="2"/>
+<text x="78" y="240" font-size="20" fill="black" text-anchor="start">+ check(client_id: str, endpoint: str): Decision</text>
+</g>
+<g id="SlidingWindowPolicy">
+<rect x="60" y="390" width="610" height="230" fill="white" stroke="black" stroke-width="2"/>
+<text x="365.0" y="425" font-size="25" fill="#1856a6" text-anchor="middle" font-weight="bold">SlidingWindowPolicy</text>
+<path d="M60 442 H670" fill="none" stroke="black" stroke-width="2"/>
+<text x="78" y="472" font-size="20" fill="black" text-anchor="start">- _limit: int</text>
+<text x="78" y="502" font-size="20" fill="black" text-anchor="start">- _window_ms: int</text>
+<text x="78" y="532" font-size="20" fill="black" text-anchor="start">- _state: dict</text>
+<text x="78" y="562" font-size="20" fill="black" text-anchor="start">- _clock: Callable[[], int]</text>
+<path d="M60 576 H670" fill="none" stroke="black" stroke-width="2"/>
+<text x="78" y="606" font-size="20" fill="black" text-anchor="start">+ check(client_id: str, endpoint: str): Decision</text>
+</g>
+<g id="SlidingWindowState">
+<rect x="820" y="390" width="610" height="96" fill="white" stroke="black" stroke-width="2"/>
+<text x="1125.0" y="425" font-size="25" fill="#18713a" text-anchor="middle" font-weight="bold">SlidingWindowState</text>
+<path d="M820 442 H1430" fill="none" stroke="black" stroke-width="2"/>
+<text x="838" y="472" font-size="20" fill="black" text-anchor="start">+ request_times: list[int]</text>
+</g>
+<path d="M365 390 V254" fill="none" stroke="black" stroke-width="2" marker-end="url(#triangle)"/>
+<text x="388" y="332" font-size="19" fill="black" text-anchor="start">inherits</text>
+<path d="M670 444 L682 434 L694 444 L682 454 Z" fill="black" stroke="black" stroke-width="2"/>
+<path d="M694 444 H820" fill="none" stroke="black" stroke-width="2"/>
+<text x="700" y="424" font-size="18" fill="black" text-anchor="start">1</text>
+<text x="765" y="424" font-size="18" fill="black" text-anchor="start">0..*</text>
+<text x="745" y="480" font-size="19" fill="black" text-anchor="middle">per key</text>
+<path d="M820 560 H1406 L1430 584 V680 H820 Z M1406 560 V584 H1430" fill="white" stroke="black" stroke-width="2"/>
+<text x="838" y="595" font-size="20" fill="black" text-anchor="start">Key = (client_id, endpoint)</text>
+<text x="838" y="625" font-size="20" fill="black" text-anchor="start">Store accepted timestamps only.</text>
+<text x="838" y="655" font-size="20" fill="black" text-anchor="start">Keep timestamps at the cutoff.</text>
+<path d="M1125 560 V486" fill="none" stroke="black" stroke-width="2" stroke-dasharray="9 7"/>
+<text x="750" y="765" font-size="18" fill="black" text-anchor="middle">Hollow triangle: inheritance     Filled diamond: owns state     Numbers: multiplicity</text>
+</g>
+</svg>
