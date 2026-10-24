@@ -2,10 +2,10 @@
 
 [Elevator design](elevator.md) covers the implementation, movement rules, dispatch priorities, and tradeoffs.
 
-| Part | Add |
-| --- | --- |
-| 1. State and requests | One car and a set of typed stops. |
-| 2. Direction and stops | Serve matching calls, reverse, or move. |
+| Part                     | Add                                       |
+| ------------------------ | ----------------------------------------- |
+| 1. State and requests    | One car and a set of typed stops.         |
+| 2. Direction and stops   | Serve matching calls, reverse, or move.   |
 | 3. Multiple-car dispatch | Assign hall calls and advance three cars. |
 
 Each diagram shows selected members. Assume ten floors and sequential calls.

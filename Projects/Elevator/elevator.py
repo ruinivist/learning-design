@@ -5,7 +5,6 @@ Use sequential calls and explicit ticks for a low-level design interview.
 from dataclasses import dataclass
 from enum import Enum, auto
 
-
 # ---------- Requests and direction ----------
 
 FLOORS = 10
