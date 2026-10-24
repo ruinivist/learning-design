@@ -48,7 +48,14 @@ Just this above is only a type hint, nothing else, not even `None`.
 
 ## Set ops
 
-- ensure key value => `set.set_default(key, value)`
+- ensure key value => `set.set_default(key, value)
+- intersection => `A & B` or `A.intersection(B)`
+- difference ( remove any from A that are in B ) => `A-B` or `A.difference(B)` both of these are not
+  in place
+  - this is in place, `A -= B` or `A.difference_update(B)`
+- union = `A \| B`
+- symmetric difference = elems in exactly one set = `A ^ B`
+- `in`, `add`, `discard`
 
 ## Map ops
 
