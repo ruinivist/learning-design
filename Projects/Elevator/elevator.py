@@ -97,7 +97,7 @@ class Elevator:
             Request(self._current_floor, RequestType.DESTINATION),
         }
         if served:
-            self._requests.difference_update(served)
+            self._requests -= served
             if not self._requests:
                 self._direction = Direction.IDLE
             return
