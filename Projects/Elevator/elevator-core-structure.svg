@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="800" viewBox="0 0 1500 800" role="img" aria-labelledby="title">
+<title id="title">Elevator: state and typed requests</title>
+<defs><marker id="open" markerWidth="12" markerHeight="12" refX="11" refY="6" orient="auto"><path d="M1 1 L11 6 L1 11" fill="none" stroke="black" stroke-width="1.5"/></marker></defs>
+<rect width="100%" height="100%" fill="white"/>
+<g font-family="DejaVu Sans, sans-serif" fill="black">
+<text x="750" y="44" font-size="31" text-anchor="middle" fill="black" font-weight="bold">Elevator: state and typed requests</text>
+<text x="750" y="80" font-size="20" text-anchor="middle" fill="black">Blue: logic     Green: data/state</text>
+<rect x="50" y="150" width="760" height="212" fill="white" stroke="black" stroke-width="2"/>
+<text x="430.0" y="188" font-size="25" text-anchor="middle" fill="#1856a6" font-weight="bold">Elevator</text>
+<path d="M50 206 H810" fill="none" stroke="black" stroke-width="2"/>
+<text x="68" y="235" font-size="20" text-anchor="start" fill="black">- _current_floor: int</text>
+<text x="68" y="266" font-size="20" text-anchor="start" fill="black">- _direction: Direction</text>
+<text x="68" y="297" font-size="20" text-anchor="start" fill="black">- _requests: set[Request]</text>
+<path d="M50 309 H810" fill="none" stroke="black" stroke-width="2"/>
+<text x="68" y="338" font-size="20" text-anchor="start" fill="black">+ add_request(request: Request): bool</text>
+<rect x="1000" y="150" width="450" height="207" fill="white" stroke="black" stroke-width="2"/>
+<text x="1225.0" y="178" font-size="19" text-anchor="middle" fill="#18713a">«dataType» {readOnly}</text>
+<text x="1225.0" y="214" font-size="25" text-anchor="middle" fill="#18713a" font-weight="bold">Request</text>
+<path d="M1000 232 H1450" fill="none" stroke="black" stroke-width="2"/>
+<text x="1018" y="261" font-size="20" text-anchor="start" fill="black">+ floor: int</text>
+<text x="1018" y="292" font-size="20" text-anchor="start" fill="black">+ type: RequestType</text>
+<path d="M1000 304 H1450" fill="none" stroke="black" stroke-width="2"/>
+<text x="1018" y="333" font-size="20" text-anchor="start" fill="black">+ is_valid(): bool</text>
+<path d="M810 270 H1000" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)"/>
+<text x="905" y="250" font-size="20" text-anchor="middle" fill="black">pending stops</text>
+<text x="980" y="301" font-size="19" text-anchor="end" fill="black">0..*</text>
+<rect x="1000" y="520" width="450" height="191" fill="white" stroke="black" stroke-width="2"/>
+<text x="1225.0" y="548" font-size="19" text-anchor="middle" fill="#18713a">«enumeration»</text>
+<text x="1225.0" y="584" font-size="25" text-anchor="middle" fill="#18713a" font-weight="bold">RequestType</text>
+<path d="M1000 602 H1450" fill="none" stroke="black" stroke-width="2"/>
+<text x="1018" y="631" font-size="20" text-anchor="start" fill="black">PICKUP_UP</text>
+<text x="1018" y="662" font-size="20" text-anchor="start" fill="black">PICKUP_DOWN</text>
+<text x="1018" y="693" font-size="20" text-anchor="start" fill="black">DESTINATION</text>
+<path d="M1225 357 V520" fill="none" stroke="black" stroke-width="2" marker-end="url(#open)"/>
+<text x="1249" y="446" font-size="20" text-anchor="start" fill="black">type</text>
+<text x="1249" y="506" font-size="19" text-anchor="start" fill="black">1</text>
+<path d="M60 480 H788 L810 502 V606 H60 Z M788 480 V502 H810" fill="white" stroke="black" stroke-width="2"/>
+<text x="78" y="515" font-size="20" text-anchor="start" fill="black">Set identity is (floor, type).</text>
+<text x="78" y="547" font-size="20" text-anchor="start" fill="black">Repeated presses merge within one car.</text>
+<text x="78" y="579" font-size="20" text-anchor="start" fill="black">Valid current-floor requests are already served.</text>
+<path d="M440 480 V362" fill="none" stroke="black" stroke-width="2" stroke-dasharray="9 7"/>
+<text x="750" y="760" font-size="20" text-anchor="middle" fill="black">Selected members; requests are immutable values passed into the car.</text>
+</g>
+</svg>

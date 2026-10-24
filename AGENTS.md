@@ -28,6 +28,11 @@ Use four-space indentation in Python, `snake_case` for functions and variables, 
 
 Use both the `prose` and `humanizer` skills whenever writing or revising notes, docstrings, or code comments in this repository. Apply `prose` while drafting, then use `humanizer` to edit the result. Preserve technical meaning, code behavior, examples, identifiers, commands, and links.
 
+For code comments:
+
+- Put a one-line comment before each logical block to explain what the next block does as a whole. Avoid commenting on every statement.
+- Use short, plain sentences and familiar words. Apply `prose`, then `humanizer`, to keep the wording natural and easy to scan.
+
 ## Testing Guidelines
 
 No automated test suite, testing framework, or coverage threshold is configured. For behavioral changes, add focused assertions or standard-library `unittest` tests alongside the affected exercise; name test files `test_*.py`. Run them with `python -m unittest discover -s "Projects/<exercise>"`. Check edge cases and document any database-dependent validation separately from latency measurements.
