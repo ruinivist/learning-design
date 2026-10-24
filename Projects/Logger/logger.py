@@ -19,36 +19,52 @@ class Level(IntEnum):
     WARN = 30
     ERROR = 40
 
+
 @dataclass(frozen=True, kw_only=True)
 class Record:
     origin: str
     level: Level
     ts: datetime
     msg: str
-    args: tuple[Any,...] = ()
+    args: tuple[Any, ...] = ()
 
     def message(self) -> str:
         return self.msg % self.args if self.args else self.msg
 
+
 # === formatter strategy
+
 
 class Formatter(ABC):
     @abstractmethod
     def format(self, r: Record) -> str: ...
 
+
 class PlainFormatter(Formatter):
     def format(self, r):
         return f"{r.ts.isoformat()} {r.level.name} {r.origin}: {r.message()}"
 
+
 class JsonFormatter(Formatter):
     def format(self, r):
-        return json.dumps({"ts": r.ts.isoformat(), "level": r.level.name, "logger": r.origin, "msg": r.message()})
+        return json.dumps(
+            {
+                "ts": r.ts.isoformat(),
+                "level": r.level.name,
+                "logger": r.origin,
+                "msg": r.message(),
+            }
+        )
+
 
 # === sink is where data ends up for the actual writing, think of as the "Appender"
 
+
 class Sink(ABC):
     # the * means that every param after MUST be named arg
-    def __init__(self, *, level: Level = Level.DEBUG, formatter: Formatter | None = None) -> None:
+    def __init__(
+        self, *, level: Level = Level.DEBUG, formatter: Formatter | None = None
+    ) -> None:
         self.level = level
         # why not just put in the arg as instead of None there
         # that line would run one when the class itself is created, every default formatter then would be the
@@ -65,7 +81,9 @@ class Sink(ABC):
 
     def close(self) -> None: ...
 
+
 # the 3 actual sink impls
+
 
 class ConsoleSink(Sink):
     # in general we don't construct objects unless "immutable"ish in args
@@ -77,6 +95,7 @@ class ConsoleSink(Sink):
     def write(self, line):
         print(line, file=self.stream)
 
+
 class FileSink(Sink):
     def __init__(self, *, path: str, **kw):
         super().__init__(**kw)
@@ -86,11 +105,12 @@ class FileSink(Sink):
     def write(self, line):
         # you could also do
         # self.file.write(line + "\n")
-        print(line, file = self.file )
+        print(line, file=self.file)
 
     def close(self):
         # rem: here we do need a close
         self.file.close()
+
 
 class MemorySink(Sink):
     def __init__(self, **kw: Any):
@@ -100,6 +120,7 @@ class MemorySink(Sink):
     def write(self, line):
         self.lines.append(line)
 
+
 # === dispatcher
 
 # a dispatcher just "detaches the write" to an async path. Logger will only add to queue ( blocking ) and let
@@ -107,6 +128,7 @@ class MemorySink(Sink):
 
 # to id match for a stop
 _STOP = object()
+
 
 class Dispatcher:
     def __init__(self, *, capacity: int) -> None:
@@ -139,7 +161,9 @@ class Dispatcher:
         # custom dropping logic for in capacity, if debug or info, drop it
         # else blocking wait
         if r.level < Level.WARN and self.q.qsize() >= self.capacity_threshold:
-            self.dropped += 1  # unlocked, can undercount under contention; it's a metric
+            self.dropped += (
+                1  # unlocked, can undercount under contention; it's a metric
+            )
             return
         self.q.put((logger, r))
 
@@ -151,19 +175,28 @@ class Dispatcher:
         self.q.put(_STOP)
         self.thread.join()
 
+
 # === Logger -> Observer pattern for sinks and Chain pattern for handlers
 
+
 class Logger:
-    def __init__(self, *, name: str, parent: Logger | None, dispatcher: Dispatcher, clock: Callable[[], datetime]) -> None:
+    def __init__(
+        self,
+        *,
+        name: str,
+        parent: Logger | None,
+        dispatcher: Dispatcher,
+        clock: Callable[[], datetime],
+    ) -> None:
         self.name = name
-        self.parent = parent # for the chain
+        self.parent = parent  # for the chain
         self.dispatcher = dispatcher
         self.clock = clock
-        self.level: Level | None = None # it'll fall back to parent first
+        self.level: Level | None = None  # it'll fall back to parent first
 
         # same message is logged by EACH handler
         self.propagate = True
-        self.sinks : tuple[Sink, ...] = () # tuple[Sink] would mean just one elem
+        self.sinks: tuple[Sink, ...] = ()  # tuple[Sink] would mean just one elem
 
     def attach(self, sink: Sink) -> None:
         # 1\ we made it a tuple so that the notify loop is not run under changing list and accidentally
@@ -176,20 +209,32 @@ class Logger:
     def effective_level(self) -> Level:
         if self.level is not None:
             return self.level
-        assert self.parent is not None, "a logger without a parent must have an explicit level"
+        assert (
+            self.parent is not None
+        ), "a logger without a parent must have an explicit level"
         return self.parent.effective_level()
 
     def log(self, level: Level, msg: str, *args: Any) -> None:
         if level < self.effective_level():
             return
-        self.dispatcher.submit(self, Record(origin=self.name, level=level, ts=self.clock(), msg=msg, args=args))
+        self.dispatcher.submit(
+            self,
+            Record(origin=self.name, level=level, ts=self.clock(), msg=msg, args=args),
+        )
 
-    def debug(self, msg: str, *args: Any) -> None: self.log(Level.DEBUG, msg, *args)
-    def info(self, msg: str, *args: Any) -> None: self.log(Level.INFO, msg, *args)
-    def warn(self, msg: str, *args: Any) -> None: self.log(Level.WARN, msg, *args)
-    def error(self, msg: str, *args: Any) -> None: self.log(Level.ERROR, msg, *args)
+    def debug(self, msg: str, *args: Any) -> None:
+        self.log(Level.DEBUG, msg, *args)
 
-    ### these below are all on the writer thread
+    def info(self, msg: str, *args: Any) -> None:
+        self.log(Level.INFO, msg, *args)
+
+    def warn(self, msg: str, *args: Any) -> None:
+        self.log(Level.WARN, msg, *args)
+
+    def error(self, msg: str, *args: Any) -> None:
+        self.log(Level.ERROR, msg, *args)
+
+    # ==== both of these below are all on the writer thread
     def notify(self, r: Record) -> None:
         for sink in self.sinks:
             try:
@@ -204,15 +249,23 @@ class Logger:
         if self.propagate and self.parent is not None:
             self.parent.handle(r)
 
+
 # composition root
+
 
 class LogManager:
     # not an enforced singleton at structual level, the code usage make it singleton
-    def __init__(self, *, capacity: int = 1024,
-                 clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc)) -> None:
+    def __init__(
+        self,
+        *,
+        capacity: int = 1024,
+        clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+    ) -> None:
         self.dispatcher = Dispatcher(capacity=capacity)
         self.clock = clock
-        self.root = Logger(name="root", parent=None, dispatcher=self.dispatcher, clock=clock)
+        self.root = Logger(
+            name="root", parent=None, dispatcher=self.dispatcher, clock=clock
+        )
         self.root.level = Level.WARN  # stdlib's default too
         self.loggers: dict[str, Logger] = {}
         self.lock = threading.Lock()
@@ -229,7 +282,12 @@ class LogManager:
                 path = f"{path}.{part}" if path else part
                 if path not in self.loggers:
                     # all of them share the dispatcher and the clock
-                    self.loggers[path] = Logger(name=path, parent=node, dispatcher=self.dispatcher, clock=self.clock)
+                    self.loggers[path] = Logger(
+                        name=path,
+                        parent=node,
+                        dispatcher=self.dispatcher,
+                        clock=self.clock,
+                    )
                 node = self.loggers[path]
 
             return node
