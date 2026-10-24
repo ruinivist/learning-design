@@ -176,6 +176,7 @@ class Logger:
     def effective_level(self) -> Level:
         if self.level is not None:
             return self.level
+        assert self.parent is not None, "a logger without a parent must have an explicit level"
         return self.parent.effective_level()
 
     def log(self, level: Level, msg: str, *args: Any) -> None:
