@@ -1,5 +1,7 @@
 # What to focus on?
 
+- A good link: https://www.hellointerview.com/learn/system-design/in-a-hurry/delivery
+
 A quick checklist to not be lost.
 
 ## 1. Scope · 5 min

@@ -1,0 +1,47 @@
+---
+title: Rate Limiter
+date: 8Nov26
+---
+
+I don't think I can do a better job than what the links have but so all that I write here is just delta and a checklist of sorts to remember stuff.
+
+- What is the checklist before you begin?
+  - Requirements -> core entities -> API/Interface ( here ) -> Design -> Deep Dive
+- Criticisms of token bucket?
+  - unfair if pooled
+  - allows bursts, so problematic if the backend cannot handle burstry traffic
+- Must ask
+  - what are we limiting
+  - what scale
+- Redis as data store
+  - why at gateway?
+    - if you need service level state ( niche usecase ) you lose that but mostly acceptable
+  - A redis cluster
+    - connection pooling at cluster
+    - replication
+  - ( less ideal ) Or we can fail open/fail close
+    - maybe have a small storage at the gateway
+    - why not fail open? cascading failures
+    - fail open is reasonable where say firm is willing to bear the cost and it's not system limits that will be challenged
+  - uses hash-slot based sharind
+- what to return?
+  - 429
+  - Headers -> the units are just convention
+    - `X-RateLimit-Limit: 100`
+    - `X-RateLimit-Remaining: 42`
+    - `X-RateLimit-Reset: unix timestamp here`
+- Differential limits?
+  - Keep it as part of the JWT if it's user specific
+  - Have a "push based" configurable rule for varition across say ip address, api key, user
+    - Do we need strong consistency? zookeeper / etcd
+    - Redis Pub/Sub ( better choice here )
+    - anything's fine as long as gateway is not "polling"
+
+### Links
+
+TODO: need to make sure I have a local copy of these in case the sites go down
+
+- https://www.hellointerview.com/learn/system-design/problem-breakdowns/distributed-rate-limiter
+- Hello interview youtube vid - https://www.youtube.com/watch?v=MIJFyUPG4Z4
+- https://redis.io/tutorials/howtos/ratelimiting/
+- whiteboard - https://app.excalidraw.com/l/56zGeHiLyKZ/8QoyyW6U5wz
