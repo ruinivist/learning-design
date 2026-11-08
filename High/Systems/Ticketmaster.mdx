@@ -1,0 +1,36 @@
+---
+title: Ticketmaster
+date: 9Nov26
+---
+
+- How to handle payments?
+  - Two phase ( even at the client level, it's two phase at say Stripe's level as well )
+    - First phase is reserving with a dedicated expiry
+    - Only on payment will the reservation turn into a fulfilled booking
+- How to reserve?
+  - db field of timestamp reserved and a cron job? ugly
+  - Redis distributed lock is better ( TTL )
+    - failure mode? ACID on db still keeps you safe but for that time period, among parallel bookings only one will succeed so a little bad for UX
+    - TODO: what query semantics we use here?
+- Fast search?
+  - Elasticsearch
+    - uses inverted indexes and is optimised for queries
+    - don't use as priamry database, instead have an async replication
+      - CDD = change data capture, have a stream based push to elasticsearch
+- Caching on search?
+  - Only relevant for non recommender ( non personalised ) systems
+  - AWS's OpenSearch has node level managed caching
+  - Can cache at CDN level as well for get requests ( fastest )
+    - need to ensure permutations of queries are not too many
+  - Redis based caching as well
+- Live updates on seats status
+  - Long polling if it's say 5 to 10 minutes
+  - Websockets are ugly as we don't need the bidirectional comm
+  - SSE is better for longer durations and unidirectional as well
+- Surge handling
+  - virtual waiting room which maintains a queue for the flood
+
+### Links
+
+- https://www.youtube.com/watch?v=fhdPyoO6aXI&t=1074s
+- https://app.excalidraw.com/l/56zGeHiLyKZ/2Z8PSPHfA8q

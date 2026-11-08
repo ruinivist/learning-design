@@ -1,0 +1,38 @@
+---
+title: How Tos
+date: 9Nov26
+---
+
+**Building some NFRs proactively**
+
+- CAP, what do I give up and where?
+  - best answer is where you make different tradeoffs at different parts of the system
+- R/W skew
+  - almost all systems have those, have some general ways to handle those
+- Search
+  - a fast search is like a trivial NFR and all you have to do is spam elasticsearch
+- Surge handling / celebrity problems
+
+**The API/interface comes first**
+
+- if it's user facing only then worry about the API, else just an interface will suffice
+- To build out the API, start ticking off each FR's happy path
+- **anti-pattern**: Never have user id in a request, if you are authenticating you'll anyways have the user. Having it in body allows for spoofing.
+
+**Data model/schema**
+
+- building this ahead of time is just pointless
+- at the design stage, build the schema just in time as you follow the happy path of each API request
+
+**Design stage**
+
+- almost always go for micro-services, that is very much the intention in an interview unless you really know what you are doing
+
+**Database picking**
+
+- SQL vs NoSql does not quite matter anymore as both databases support both things nowadays.
+  - choose based on ACID and what the data is naturally represented as, some data is very tabular other more document like
+
+**When to do math?**
+
+- Post desing when you want to verify if you need horizontal scaling/sharing and to determine parameters for those.
