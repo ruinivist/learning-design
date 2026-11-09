@@ -1,0 +1,2 @@
+- https://github.com/design-gurus/grokking-system-design/
+- https://www.systemdesignbutsimple.com/
