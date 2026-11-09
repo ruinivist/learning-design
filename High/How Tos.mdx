@@ -7,6 +7,7 @@ date: 9Nov26
 
 - CAP, what do I give up and where?
   - best answer is where you make different tradeoffs at different parts of the system
+  - it'll always be over net to partition tolerant is almost always needed so choice is mostly betweeb C and A
 - R/W skew
   - almost all systems have those, have some general ways to handle those
 - Search
@@ -41,3 +42,8 @@ date: 9Nov26
 
 - fairness concerns
   - do you want to partition within the queue, FIFO can cause starvation if request serving times vary
+
+**REST APIs**
+
+- get the verbs right
+- endpoints should be "plural"

@@ -1,0 +1,29 @@
+---
+title: Bitly
+date: 10Nov26
+---
+
+> url shortener
+
+- CAP? Pick availaibility over consistency, it's fine if the same url isn't available for redirect just the next second, A is more common and C to pick usually. Rem that P is default on net.
+- 302 or 301?
+  - 302 is permanent redirect, aka browsers can cache it. You lose analytics since any other requests don't reach the backend
+  - 301 is easier we have a simple system so keeping analytics does not cost us much
+- strategies for shortening
+  - b62 encoding, not b64 as not url friendly
+    - can check recheck db for collisions
+  - counter + b62? predictable, can leaks inferred data as you lose the security by obscurity thing
+    - if used and horizontal scaling, need a consistent and durable view of counters
+    - use redis high availability mode and redis INCR to maintain the counter
+  - bijective functions like sqids is the way to go here ideally
+- Redis cache at server level = LRU + readthrough
+  - significantly reduces db load
+- CDN? same analytics loss problem
+- problem has heavy RW skew
+  - containerise to have more read workers than write, autoscaling can anyways handle this
+
+**Estimates** are important for this one
+
+- RPS
+- 200ms latency requirement
+- what size of DB?
