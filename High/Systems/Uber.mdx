@@ -1,0 +1,35 @@
+---
+title: Uber
+date: 9Nov26
+---
+
+This is a tricky one as each of the individual systems can be covered themselves in a lot of depth
+
+- Persist the ride => probably very unique to such ride apps
+  - A ride is persisted even at the estimate stage ( with some fare TTL perhaps )
+  - At any instant, only one rider is shown the option to pick a ride
+    - this avoids UX issues on the driver's end where same one is accepted by both ( but fails for one )
+- Dynamic location updates on the client side
+  - is moving, is active
+  - this is best effort, you should design where each client say updates every 5s and we get to ~500k TPS
+- Finding nearby drivers fast
+  - quadtree
+    - can't be used as we have too may updates, index can't be built as fast
+    - for lower frequency updates, better as more space efficient, partition on a count
+    - pg has support via extensions
+  - geohashing
+    - redis has support, this is same as spatial hashing
+    - much faster but some lesser populate areas are still on the same block
+- Ride matching service
+  - In a loop, lock a driver and send request, wait for a timeout else unlock and continue
+    - problem is crash = forever lock, you would need a cleanup
+  - same as tickermaster, distributed redis lock
+  - or if you use DynamoDb it has ttl support as well
+- surges / fault tolerance of the matching service?
+  - have the matching service pull from a queue, this handles surges provided they are not sustained
+  - if a worker dies, it's entry is not removed from the queue so another worker will pick it up
+
+### Links
+
+- https://www.youtube.com/watch?v=lsKU38RKQSo
+- https://app.excalidraw.com/l/56zGeHiLyKZ/6WXHvJ2vXSd
