@@ -1,0 +1,35 @@
+---
+title: Dropbox
+date: 9Nov26
+---
+
+- usign some blob storage like S3
+  - presigned urls, clients directly upload and download
+- chunking
+  - for resumable downloads as even if it's not "exposed" as resumable clients need to be better
+  - chunk files and keep their hash, locally in db and on remote server too
+    - this allows for a delta syn when files change so only needed chunks are downloaded
+- watching changes
+  - from remote
+    - S3 has a CDC via S3 event notifications
+    - or use S3's multipart upload
+    - any of those will be sent back to clients via
+      - sockets/long polling/SSE? 99% is idle so keeping a connection is not ideal here
+      - just some adaptive polling is fine, clients can always have a refresh button, "realtime" on the level of
+        seconds is not important here
+    - an event bus with cursor?
+      - a little bit of an overkill but the ENTIRE sync state upto some time in the past is represented as "deltas" on chunk, a linear representations
+      - you have a cursor and a kafka like queue
+        - parition on say user id etc
+  - from local
+    - clients register with os level watcher functions like `inotify` in case of linux
+- CND is usually a bad idea unless usage patterns confirm that sharing is dominant
+- compression
+  - maybe per file, not every file format is suitable for compressing, so can be adaptive
+- two way sync
+  - delta for usual fast path but any missed delta can become a forever inconsistency so some weekly ( or other freq ) integrity checks and repairs.
+
+### Links
+
+- https://www.youtube.com/watch?v=_UZ1ngy-kOI
+- https://app.excalidraw.com/l/56zGeHiLyKZ/311OFRZkAkz
