@@ -1,0 +1,141 @@
+---
+title: a little bit on the most popular blob storage in the world
+date: 10Nov26
+---
+
+- s3 buckets are blobally unique by name
+  - I chose "test" and was naturally denied, apparently I was able to make "ruins-test-bucket"
+  - an early mistake from them
+  - as a bandaid, they recomment prefixing with account name. naturally you can only use account names that belong to you as an added check ( not sure )
+- ACL = access control list
+  - you can make a list and access control is across different AWS accounts
+- Bucket versioning, disabled by default
+- Tags?
+- Encryption
+  - SSE with S3 managed keys
+  - SSE with AWS KMS managed keys
+    - AWS KMS allows for customer manaegd keys and allows finer control over key perms/rotations etc
+- Keys are prefixes
+  - there's nothing special about `notes/` in a `notes/hello.txt`
+  - for s3 its just a string prefix, so treated equally as "notes" or "note"
+  - it's still used a "convention" to logically map it all to directories but in the end, these are all just string keys
+
+---
+
+- Making a bucket is just a little bit of button clicking
+- cli
+  - refer [cli](./aws%20cli.mdx)
+
+```bash
+# Set the bucket name for this terminal session
+BUCKET="MY_BUCKET"
+
+# List your buckets
+aws s3 ls
+
+# List objects at the bucket's root
+aws s3 ls "s3://$BUCKET/"
+
+# Upload a file
+aws s3 cp ./hello.txt "s3://$BUCKET/hello.txt"
+
+# Upload with a different object key
+aws s3 cp ./hello.txt "s3://$BUCKET/notes/greeting.txt"
+
+# List objects under a prefix
+aws s3 ls "s3://$BUCKET/notes/"
+
+# Download an object
+aws s3 cp "s3://$BUCKET/notes/greeting.txt" ./downloaded.txt
+
+# Upload all files in a directory
+aws s3 cp ./my-folder/ "s3://$BUCKET/my-folder/" --recursive
+
+# Preview files that would be uploaded or updated
+aws s3 sync ./my-folder/ "s3://$BUCKET/my-folder/" --dryrun
+
+# Upload new or changed files from a directory
+aws s3 sync ./my-folder/ "s3://$BUCKET/my-folder/"
+
+# Inspect an object's metadata
+aws s3api head-object --bucket "$BUCKET" --key "notes/greeting.txt"
+
+# Delete one object
+aws s3 rm "s3://$BUCKET/notes/greeting.txt"
+```
+
+- Region?
+  - it's where the bucket lives, helps with latency to keep the bucket near
+  - pricing depends on region
+
+- I uploaded, how do I download from say a public link?
+  - if I try to access via the raw object url, that doesn't work, NEEDs to be signed
+    - https://ruins-test-bucket2.s3.us-east-1.amazonaws.com/s3.mdx
+  - s3://ruins-test-bucket2/s3.mdx
+  - when I downloaded from the web page
+
+This is what a signed url looks like
+
+```md
+https://<bucket>.s3.<region>.amazonaws.com/<object-key>
+?X-Amz-Algorithm=<value>
+&X-Amz-Content-Sha256=<value>
+&X-Amz-Credential=<value>
+&X-Amz-Date=<value>
+&X-Amz-Expires=<value>
+&X-Amz-Security-Token=<value>
+&X-Amz-Signature=<value>
+&X-Amz-SignedHeaders=<value>
+&response-content-disposition=<value>
+```
+
+To presign via the cli
+
+```bash
+aws s3 presign "s3://ruins-test-bucket2/s3.mdx" --region us-east-1 --expires-in 300
+```
+
+- you can specify time not usage count, so this can't be single use etc
+- max lifetime can be 7 days on private presigned urls ( or earlier if the creds that sign it expire earlier )
+
+### How do I make a public link?
+
+- note that public downloads have additional costs as well
+- the default settings when creating a new bucket has ACL disabled so it cannot be public as is, you need to modifyt that first
+  - ruins-test-bucket2 -> permissions -> block public access -> edit
+  - 4 options there which are just
+    - block new ACL
+    - block any ACL
+    - block new policies
+    - block any policy
+
+Polcies are the new thing, much more granular. This is what the policy looks like that made this specific file public for me
+
+They jave a statement editor as well but in the end all it does it generate json in a very convoluted way.
+
+```json
+{
+  "Effect": "Allow",
+  "Principal": "*",
+  "Action": "s3:GetObject",
+  "Resource": "arn:aws:s3:::ruins-test-bucket2/s3.mdx"
+}
+```
+
+- principal = who
+- resource = arn, note that s3 buckets have no region in arn, they are globally unique
+- action = `s3:GetObject` -> what operation
+
+note that it is a list of statements and since ARNs support wildcards, you can easily support a public folder to make things easier.
+
+With the changes in place, this link now works ( https://ruins-test-bucket2.s3.us-east-1.amazonaws.com/s3.mdx )
+
+### Presigned urls and uploads
+
+for uploads there isn't an option for it on the web console nor on the cli ( you can upload with cli but not generate a presigned upload url ). What you do is that you use the sdk to get a link.
+
+> naming? boto dolphines live in the amazon river so that's where it's from; le big funny
+
+`boto3` is the python sdk, rest of the languages have generic names like "aws-sdk-go".
+
+sdk related examples are continued in [notebook](./s3.ipynb).

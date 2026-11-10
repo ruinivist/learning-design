@@ -1,0 +1,19 @@
+- what is ARN?
+  - Amazon resource name, every resource has a unique one
+
+```text
+arn:aws:s3:::ruins-test-bucket2/s3.mdx
+│   │   │    └──── bucket and object key ────┘
+│   │   └── AWS service: S3
+│   └────── AWS partition
+└────────── says “this is an ARN”
+```
+
+- ACL? access control list
+  - older, more limited, used to specify access across to same resource across AWS accounts
+- Policies are the newer one
+  - it's a JSON document attached to bucketa nd is MUCH more granular
+
+- what is STS?
+  - Security Token Service. provides temporary credentials and can identify the AWS user/role
+  - `aws sts get-caller-identity`
