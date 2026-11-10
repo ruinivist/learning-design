@@ -1,0 +1,47 @@
+---
+title: Whatsapp
+date: 10Nov26
+---
+
+> this is actually a tricky one and you can go VERY deep on this
+
+from my writealong notes
+
+- FRs
+  - media ( rem the direct upload )
+  - eventual delivery to all clients is must
+- NFRs
+  - store only for 30 days or till delivered
+    - you can use this to build estimates on total storage needed
+  - multiple clients
+    - this starts to REALLy grow our inbox table by say 3 to 4x so limit to certain number of devices
+  - latency = ~500ms, near realtime
+  - guaranteed delivery ( 2 way ack )
+- everything is a group chat
+- need to know more in depth about dynamo db here
+- what communication method for chats?
+  - websockets
+  - how to load balance
+    - what we want to avoid is load balancer forwarding to say A and then to send to other service we then have to move it to B
+    - L4 load balancer needed ( if we load balance at all )
+  - or instead have a chat registry and have clients directly talking to chat servers
+    - redis pubsub to maintain just a quick list of what client is on what chat server
+    - no kafla please, not suitable for it
+      - need to cover this in detail, topics vs pubsub
+    - how do you scale?
+      - consistent hashing but slow scaling as even with consistent hashing it'll take some time for say 20% of the users to migrate
+      - etcd or zookeeper for config
+- group chat sizes
+  - allowing arbitrary creates problemes ( NEED TO COVER IN DETAIL )
+- cleanup?
+  - a cron will do
+- liveness
+  - hard to do on group chats ( need to cover )
+  - limit to 1-1
+- servers MUST be stateless
+  - what do we need to do for this?
+
+### Links
+
+- https://www.youtube.com/watch?v=cr6p0n0N-VA
+- unfortunately no exaclidraw link at this stage
