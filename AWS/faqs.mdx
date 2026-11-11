@@ -17,3 +17,8 @@ arn:aws:s3:::ruins-test-bucket2/s3.mdx
 - what is STS?
   - Security Token Service. provides temporary credentials and can identify the AWS user/role
   - `aws sts get-caller-identity`
+
+- Region = something like "us-east-1"
+  - redundancy WITHIN region is via "availability zones" ( AZ )
+  - S3 ( default config ) lets AWS manage the AZs
+  - EC2 for example runs in ONE AZ withing a region

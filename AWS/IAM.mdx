@@ -1,0 +1,102 @@
+---
+title: IAM
+date: 12Nov26
+---
+
+- IAM = identity and access management
+  - basically WHO can do WHAT
+- terms
+  - user
+  - user groups for above
+  - role
+    - identity you assume temporarily for performing an action
+    - temp means anything associated with a role to allow access to something always has temp creds
+      - the idea is similar to OAuth where you have short lived access tokens which keep on refreshing as long as needed
+  - policies ( what is mosly the crux of all this )
+  - identity providers = external systems that allows auth
+
+### navigating the console
+
+By default I had 3 roles and some 1600 policies, all AWS managed, nothing custom yet.
+
+- `AWSServiceRoleForResourceExplorer`
+  - which is linked to this policy `AWSResourceExplorerServiceRolePolicy`
+  - and this service `AWS Service: resource-explorer-2`
+  - apparently this is AWSs internal thing for indexing my resources for searches
+    - it's kind of interesting that EVERYTHING is a platform at AWS ( https://gist.github.com/chitchcock/1281611 )
+
+- resource vs identity based policy
+  - for example on S3 I did set a resource policy but it doesn't show up here
+  - Resource-based policy: attached to a resource. “Who can access this resource?”
+  - Identity-based policy: attached to a user, group, or role. “What can this identity access?”
+
+#### playbook: how do I limit say different people/teams to certain prefixes of an S3 bucket
+
+At the bucket resource level policy I can do this
+
+```json
+{
+  "Effect": "Allow",
+  "Principal": {
+    "AWS": "arn:aws:iam::123456789012:role/EngineeringRole"
+  },
+  "Action": "s3:GetObject",
+  "Resource": "arn:aws:s3:::team-bucket/engineering/*"
+}
+```
+
+Then define these roles within IAM and give the ( \_technically, "assume" the role instead ) members these roles.
+
+Now what's configurable is where you define this access itself
+
+- it can be on the resource via above resource level policy
+- or it can be on the IAM role as well
+
+What about a user group here?
+
+- above flow => Alice + Bob → assume Engineering role → role can access engineering/\*
+- user group => Alice + Bob → Engineering group ( user group ) → policy allows engineering/\*`
+
+more detials on the role flow
+
+```
+Alice signs in
+    ↓
+Identity Center: Alice belongs to Engineering
+    ↓
+Engineering is assigned a permission set for an AWS account
+    ↓
+Alice uses the corresponding IAM role with temporary credentials
+    ↓
+That role can read the engineering/ S3 prefix
+```
+
+vs the group flow
+
+```
+Alice signs in as an IAM user
+    ↓
+Alice belongs to the Engineering IAM group
+    ↓
+The group has an identity-based policy
+    ↓
+The policy allows Alice to read engineering/ in S3
+
+### What is this "Engineering IAM group"
+
+Company’s AWS account
+├── IAM user: Alice
+├── IAM user: Bob
+└── IAM group: Engineering
+    └── members: Alice and Bob
+
+Alice MUST be able so sign in to the company account using her IAM creds
+```
+
+- My take on groups vs roles
+  - you should ALWAYS go for roles, they are in general a superset of groups
+  - I don't see why you would go for groups unless you ALREADY have groups configured
+  - **Federated access**
+    - look at the group flow, you need to have an IAM user
+    - what roles allow is federated access as well with an external provider say like Okta that the company has configured
+  - tl;dr = just use roles
