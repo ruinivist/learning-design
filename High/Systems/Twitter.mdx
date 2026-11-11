@@ -1,0 +1,29 @@
+---
+title: Twitter
+date: 11Nov26
+---
+
+> I need to merge it with my own twitter notes from earlier and make cover it in depth post unifying but that's a... todo
+
+- LB
+  - what routing alog
+  - l4 or l7, what does each one allow you to do
+    - with l7 you can do request level routing and inpsect contents to be smarter
+- some elements that you can throw around in any interview to jargonmaxx for people that are influenced by such knowledge checks
+  - LB ( usually you can just club it with the gateway )
+  - rate limiter on writes ( just cite it's not just for bots the system is build for RW skew )
+    - can be reads as wel but well you do wanna cite the skew
+  - cache
+  - CDN
+  - ELK for logging
+  - Elasticsearch with CDC for searching
+  - Prometheus + Pagerduty for alerts
+- keep the reply data separate as well as the service
+  - so it scale independently
+  - the tweets do not become two bloated
+  - can fetch replies separately and paginated while your tweet is visible
+- graph db for follows
+
+### Resources
+
+- https://www.youtube.com/watch?v=Nfa-uUHuFHg
