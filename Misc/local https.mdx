@@ -1,0 +1,20 @@
+---
+title: Localhost and HTTPS?
+date: 14Nov26
+---
+
+- why even bother with https on localhost
+  - no dual browser rules to allow for testing locally
+  - it's all EXACTLY identical to deployed setup except where the server runes
+- how does it work?
+  - same as any https, the server presents a cert identifying itself as localhost
+  - problem is which cert authority would verify that claim?
+    - `mkcert` to sign and create some certs using your own private key
+    - add that key to the list of keys that the system/browser's trust
+      - same as adding the .pem file via browser's settings though you don't usually have to manually do that
+- one liner on what do to?
+  - `mkcert -install` => Trust website certificates signed by my local CA
+  - `mkcert localhost 127.0.0.1 ::1` => sign a new website as my local ca
+    - this will make certs in pwd, you usually don't want that
+- what if my server doesn't support local https OR I don't wanna modify it?
+  - proxy if via caddy
