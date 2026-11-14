@@ -1,0 +1,43 @@
+---
+title: Ad click aggregator
+date: 14Nov26
+---
+
+- infra design so apis are little bit less important, can just move with data flows
+- ugly way = batch via spark with cassandara and some olap db
+  - cassandra is write heavy suitable
+  - olap db updated via spark cron jobs would be read focused
+  - why split?
+    - for here the read vs write differentiation matters
+    - but in general, read/write failures paths are different so fault isolation
+    - separate scaling policies for rw skew
+- stream is the idea way here
+  - kafka/kinesis
+    - retention with s3 upload via connectors
+    - can assume well managed kinesis well NEVER lose info if it reaches till kinesis
+  - flink
+    - don't do any checkpointing, the aggregation interval is too small for that
+    - aggregation window vs flush internal
+  - sharing for above two
+    - based on adId
+  - olap db from earlier
+    - shard on advertiserID else for same advertiser data will be split ( query focused )
+  - hot shard problem?
+    - have the service append adId:[0-N] for as many splits as you want for known hot ads
+    - downstream it'll go one to one to a different stream and a flink instance
+  - spammy clicks?
+    - have the ad gen service sign with it's priv key an impression id
+    - each impression id ( valid ) is then counted once
+    - anything unsigned is discarded to prevent bots from just randomly trying
+- a delayed reconciliations
+  - stream online processing can be a bit more error prone and complex
+  - have a delayed ugly way reconciler that uses the s3 dumped kinesis records and just runs a spark batch over them
+  - reconciler to OVERWRITE diffs after flagging
+
+- lambda vs kappa architectures?
+
+### Links
+
+- https://www.youtube.com/watch?v=Zcv_899yqhI
+- https://app.excalidraw.com/l/56zGeHiLyKZ/5WmP4rHX6Hq
+- https://www.hellointerview.com/learn/system-design/problem-breakdowns/ad-click-aggregator
