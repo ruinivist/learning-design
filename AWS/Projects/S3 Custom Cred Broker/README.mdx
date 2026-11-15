@@ -32,7 +32,7 @@ The flow:
 
 1. I send a GET request to the broker through an encrypted SSH tunnel.
 2. The broker calls STS `AssumeRole`.
-3. STS returns temporary credentials for the S3 access role.
+3. STS returns temporary credentials for the S3 access role. Default is 1h, configurable from 15m to 12h max.
 4. The broker returns those credentials to me.
 5. I use them with the AWS CLI to read the file from S3.
 
@@ -87,10 +87,11 @@ It's a lot of clicking to get this setup, you can just ask some llm for the step
 ### Progress so far
 
 1. Created a private S3 bucket and uploaded `hello.txt`.
-2. Created a broker role and an S3 reader role, with policies connecting them.
+2. Created a broker role and an S3 reader role, with policies connecting them ( as the diagram shows )
 3. Launched an EC2 instance and attached the broker role.
-4. Used STS to assume the S3 reader role and read `hello.txt` from EC2.
-5. Added the broker code.
+4. Used STS to assume the S3 reader role and read `hello.txt` from EC2 ( this is just for verification, do remember to unset stuff if you set any env vars, I had an older cred that expired and was messing with the server startup )
+5. Added the broker code and ran the server
+6. Port forward via ssh, then curl and test
 
 ### Running the broker
 
@@ -103,9 +104,51 @@ make install
 make run
 ```
 
+> what roles is this S3_READER_ROLE? Think what role the ec2 instance's IAM needs to assume. Go to that role and just copy the ARN
+
 Them just forward the port in one terminal and curl from the other.
 
 ```bash
 ssh -i /path/to/key.pem -L 8443:127.0.0.1:8443 ec2-user@YOUR_EC2_IP
 curl http://127.0.0.1:8443/credentials
 ```
+
+Some extra vm steps to install the basic deps
+
+```bash
+sudo dnf install git make
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### Shape of creds?
+
+With all said and done and finally curling, here's what I get
+
+- AccessKeyId
+- SecretAccessKey
+- SessionToken
+- Expiration
+
+A little script to run in another terminal to get the envs right
+
+```bash
+creds=$(curl -fsS http://127.0.0.1:8443/credentials) &&
+export AWS_ACCESS_KEY_ID=$(echo "$creds" | jq -er '.AccessKeyId') &&
+export AWS_SECRET_ACCESS_KEY=$(echo "$creds" | jq -er '.SecretAccessKey') &&
+export AWS_SESSION_TOKEN=$(echo "$creds" | jq -er '.SessionToken') &&
+unset creds
+```
+
+Post this, s3 ls will work
+`aws s3 ls s3://ruins-s3-custom-cred-bucket/ --region us-east-1`
+
+**Wait, didn't I set it to block all public access?**
+
+- I was confused about it, apparently public access is just unauthenticated access for anyone over net that knows the url
+- it is not in any way related to limiting bucket to a VPC, that's a separate thing entirely
+  - that separate thing is that you define it as a bucket policy that requests to the bucket MUST originate from a given VPC only.
+- with this the IAM role being used to access the bucket needs to be allowed via the policy, which is the case for me which is why I can access it over internet as I have the needed env vars set.
+
+### A frontend like filestash?
+
+Filestash supports automatic EC2 IAM. What this means is that if you run in an EC2 that has the needed perms to assume role you can then run filestash ON that vm and it'll naturally do the same things we did except on the vm to display it on a frontend.
