@@ -1,0 +1,29 @@
+---
+title: Twitch chat
+date: 17Nov26
+---
+
+- realtime
+  - has to have some persistent connection => SSE or WS
+  - no matter what you use, biggest issue would be number of connections you can have per box and you would need multiple boxes just for keeping those connections active
+- very heavy RW skew
+  - most users are just watching
+  - if you separate R and W into different service, you can get a relaxed contraint of unidirectional SSE stream rather an WS which are heavier as a protocol to start up
+  - POST comment via api, listen via SSE
+  - plus the usual fault isolation + scaling isolation
+- each box maintains it's own list of videos => SSE connections on it
+  - you woudn't want them all to be split, rather collocate as much as you can
+  - keep a cache ( zookeeper is a little overkill here ) of what server a video lives on ( ofc can be multiple ) and try to route optimistically
+- how does the write service communicate with the SSE boxes?
+  - exact dispatch via zookeeper, a little complex as needs to be consistent but the service then knows exactly who to send to
+  - redis pubsub with video sharded topics so writer would just pub it and SSE boxes are subbed to any they have a relevant SSE connection for ( they obv need an in memory mapping of video -> connections )
+- the comments are to be persisted, high writes with low relational structure and simple queries = dynamo or cassandra
+- what about IRC?
+  - mentioning this as twitch uses IRC in reality
+  - it's not HTTP at all ( HTTP is applicaton layer protocol over TCP )
+  - rather IRC is customer protocol over TCP
+
+### Links
+
+- https://www.youtube.com/watch?v=LjLx0fCd1k8&list=PL5q3E8eRUieWtYLmRU3z94-vGRcwKr9tM
+- https://app.excalidraw.com/l/56zGeHiLyKZ/6xaHKVKAEq7
