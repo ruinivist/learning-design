@@ -230,3 +230,16 @@ Has the usual fluff liek mandatory fields/optional fields + validations on those
     `with_whatever` layer
 - merged builder
   - if the different types of default args that you need to set are really common, just add those to the builder itself.
+
+### Cloning requests?
+
+Not really worth calling a new "pattern", it's just adding a cloneable trait.
+
+- clone()
+- deepclone()
+- replace(new dict of fields or something like that)
+- it can be especially useful if you want a LOT of instances of the same thing and just have some common prototype
+- difference over interning ( flyweight )?
+  - there is some overalp but in the case interning, they MUST be the same instance in memory
+  - the whole goal for interning is perf rather than ease of making copies
+  - must be immutable OR shared mutability MUST be accepter for interning
