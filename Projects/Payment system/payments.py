@@ -83,7 +83,7 @@ class PaymentFactory(ABC):
 class PaypalFactory(PaymentFactory):
     def __init__(self) -> None:
         # ideally this will be an arg to make it testable and the key would be passed
-        # from agg root
+        # from composition root
         self.client_id = "my-super-secret-key-store"
 
     def create_processor(self) -> PaymentProcessor:
@@ -100,6 +100,6 @@ def process_order(factory: PaymentFactory, amount: Decimal) -> None:
 
 
 def main() -> None:
-    # aggregation rood
+    # composition root
     factories = {"paypal_button": PaypalFactory()}
     process_order(factories["paypal_button"], Decimal(10))

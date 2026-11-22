@@ -137,3 +137,76 @@ Note that each owner is a level of "decoupling", you could have the checkout and
 * Why pass a `PaymentFactory` instead of an already-built `PaymentProcessor` (like Strategy)?
   - Only when you need lazy creation, fresh instances per call/retry, or enforced base-class workflow guardrails; otherwise, simplify and pass the `PaymentProcessor` directly.
     - factory is what say I use and what I own, if I add just use processors then I don't have a single centralised place where I can put guardrails or tracking related common code. I don't want people to be using the payment processor without my wrapper.
+
+---
+
+### Followup to Abstract Factory
+
+Now say every payment needs a provider specific `WebhookVerifier` class.
+
+- what is verifier though?
+  - the payment apis generally are async, they'll ack and then just respond on the verified webhook later via a POST.
+  - Now the endpoint is public and anyone can hit it so what we need instead is some cryptographic proof that it's not some random person duping the POST.
+  - The payment provider signs the payload with their priv key and I use their public key to verify that it indeed was the provider.
+  - The verifier payloads are coupled to the provider here.
+
+How do I statically make it so that the verifiers and providers are coupled and we never accidentally mix it?
+
+- at the start from the verifier it's all just bytes
+- add a common webhook response type => independent of what verifier it is, finally we reach this type
+- naturally you need an abstract verifier that can map bytes to this response above.
+- the provider specific impls need to satisfy that abstract requirement I just added.
+
+Now at this stage we have two parallel lines of factories.
+
+- `StripeProcessor(PaymentProcessor)` and a `StripeWebhookVerifier(WebhookVerifier)`, this would be same for `Paypal`
+- note how the Stripe is related for the two objects, so in that sense they are coupled.
+
+What abstract factory buys me is a guarantee of a matching family, I can never mix up different processors and verifiers.
+
+```python
+class PaymentGatewayFactory(ABC):
+    @abstractmethod
+    def create_processor(self) -> PaymentProcessor: ...
+
+    @abstractmethod
+    def create_verifier(self) -> WebhookVerifier: ...
+```
+
+The way this is done is that the factory that we made earlier `PaypalFactory(PaymentFactory)` now instead inherits a more composite type ( instead `PaymentFactory` which won't exist anymore ).
+
+Something like
+
+```python
+class StripeFactory(PaymentGatewayFactory):
+    def __init__(self, api_key: str, webhook_secret: str) -> None:
+        self._api_key = api_key
+        self._webhook_secret = webhook_secret
+
+    def create_processor(self) -> PaymentProcessor:
+        return StripeProcessor(self._api_key)
+
+    def create_verifier(self) -> WebhookVerifier:
+        return StripeWebhookVerifier(self._webhook_secret)
+```
+
+So anyone's operating with a `PaymentGatewayFactory` can't possibly mix the types up.
+
+> in short this is just "boxing" related types together, nothing too remarkable I would say
+
+But what if they mix it up at the boxing itself? What the argument goes like is that at $N$ places if we work with `PaymentGatewayFactory` as a box then we can't mess up those $N$, if at the construction level we mix things up, that can be a problem but what we get is error surface reduction from $N$ callers to just $1$.
+
+### Practice
+
+A similar set of questions but look for the terms here, you want those.
+
+- Why use Abstract Factory instead of passing `PaymentProcessor` and `WebhookVerifier` separately?
+  - It enforces a family invariant (no `StripeProcessor` + `PayPalVerifier` mix-ups) and shrinks the wiring bug surface from N callers down to 1 single-owner factory.
+- How does Abstract Factory behave under Open/Closed for a new provider (Adyen) vs. a new product (`FraudChecker`)?
+  - Asymmetric: a new family (Adyen) needs 0 edits to existing code, while a new product breaks the abstract factory and every implementer is needed to add that a that's a breaking change on interface ( whichever interface we chose to break - factory or processor )
+- What if a provider (e.g., Cash-on-Delivery) has no webhooks—what's the trap with a No-Op or throwing verifier, and what's the fix?
+  - A No-Op verifier is a silent security hole ( everything gets verified on an accidental misuse ) and throwing violates LSP; apply ISP by splitting into `PaymentFactory` (`create_processor`) and `AsyncPaymentGatewayFactory` (`+ create_verifier`).
+- When is a pre-built bundle (`PaymentGateway(processor, verifier)`) better than a full Abstract Factory?
+  - Use a pre-built bundle when components are stateless and cheap as you need to create the objects and have them survive through the lifetime of the app; use Abstract Factory only when you need fresh **per-request instances**, **lazy creation**, or **team-encapsulated assembly** ( same as the factory case )
+- How do Factory Method and Abstract Factory differ, and how do they relate in code?
+  - Factory Method decouples creating 1 supertype (typically via inheritance), while Abstract Factory clubs semantically coupled variants into one compatible family (via composition) and is literally built out of Factory Methods.
