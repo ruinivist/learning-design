@@ -1,0 +1,39 @@
+---
+title: Structural patterns
+date: 23Nov26
+---
+
+## Adapter
+
+Problem: I have a legacy pager sdk that I want to add to my alerting system. My new system expects and interace C that all satisfy but I can't ask that of the legacy sdk.
+
+> this one is really trivial, wasting time on this is a case of bad faith
+
+**practice**
+
+- Why use Object Adapter (composition) instead of Class Adapter (multiple inheritance) to wrap `LegacyPagerSdk`?
+  - No API Pollution: inheritance leaks `dispatch()` onto public API → fails to quarantine legacy.
+  - Testability & Subtypes: composition allows mocks + subclasses (`TlsLegacyPagerSdk`); inheritance hard-wires to 1 class.
+  - Shared Lifecycle: inject existing SDK instance (connection pool / auth session) instead of owning its lifecycle.
+  - Closed SDKs: `final` / `sealed` classes (and single-inheritance languages) block Class Adapter anyway.
+
+- The pager gateway drops 10% of requests—should you add retries, latency metrics, and a circuit breaker directly inside `LegacyPagerAdapter.send()`?
+  - SRP Violation: Adapter = translation only (signature, data shape, error semantics); stuffing resilience creates a God Adapter.
+  - Zero Reuse & Painful Tests: copy-paste resilience into Slack/Email senders; unit tests fight backoff timers.
+  - Fix → Decorator Pattern: wrap adapter in same-interface layers: `Metrics(Retry(LegacyPagerAdapter(sdk)))`.
+  - Adapter's Only Retry Job: translate raw codes into domain error semantics (`503` → `RetryableAlertError`, `400` → `FatalAlertError`).
+
+- `LegacyPagerSdk` caps messages at 140 chars and has no `delivery_id`, but `AlertSender.send()` now requires returning a `delivery_id`—what breaks if you fake it, and how do you fix this impedance mismatch?
+  - Fake-UUID Trap (LSP Violation): returning a random UUID lies to callers → distant `404` on `check_status()`.
+  - Fix → ISP (Interface Segregation): split `AlertSender` (fire-and-forget) vs. `TrackableAlertSender` (returns `delivery_id`) → compile-time safety.
+  - Silent Truncation (Leaky Abstraction): `[:140]` hides stack traces/server IDs → fail fast, chunk messages, or append `"..."` + emit metric.
+
+- If you fork and own `LegacyPagerSdk`, should you delete the adapter—and is there ever a valid reason to put an Adapter between two internal modules your company owns?
+  - Single-Consumer Fork: own the code + only 1 consumer → delete adapter, implement `AlertSender` directly.
+  - Shared Internal Libraries: 1 library can't implement 5 teams' domain interfaces → each consumer adapts at its own boundary.
+  - Bounded Contexts / Hexagonal Architecture (Ports & Adapters): enforces Dependency Inversion + Anti-Corruption Layer (ACL) → shields core domain from another team's model changes & release cycle.
+
+- Adapter, Decorator, and Facade all wrap objects via composition—how do you tell them apart?
+  - Adapter: wraps 1 object → changes interface to match existing Target (make incompatible things talk).
+  - Decorator: wraps 1 object → same interface in/out (stack cross-cutting behavior: retries, caching, metrics).
+  - Facade: wraps subsystem (many classes) → new, simpler interface (hide multi-step orchestration).
