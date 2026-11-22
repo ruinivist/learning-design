@@ -210,3 +210,23 @@ A similar set of questions but look for the terms here, you want those.
   - Use a pre-built bundle when components are stateless and cheap as you need to create the objects and have them survive through the lifetime of the app; use Abstract Factory only when you need fresh **per-request instances**, **lazy creation**, or **team-encapsulated assembly** ( same as the factory case )
 - How do Factory Method and Abstract Factory differ, and how do they relate in code?
   - Factory Method decouples creating 1 supertype (typically via inheritance), while Abstract Factory clubs semantically coupled variants into one compatible family (via composition) and is literally built out of Factory Methods.
+
+### Making a good API => Builder and Fluent
+
+Both these are more like suggestions on how you build a nice internal DSL.
+For this one say I want to make a data object `PaymentRequest`. One can live with a dict but that's won't be a good life.
+
+Has the usual fluff liek mandatory fields/optional fields + validations on those, especially **cross field validations**.
+
+- builder
+  - cross field validations need things to be populated
+  - object has "setters" which just sets things. Even if the validation is not cross field we don't throw here
+  - finally when `set_one_field`, `set_whatever_other_field` etc are all done, I call `build` which will return me the object
+  - the class that allows me to do so I would call as `PaymentRequestBuilder`
+    - ctor for the fclass allows to set some default which I can use as bluepring to make objects with certain fields instead of doing set all over again.
+- fluent
+  - ctors and build remains the same
+  - this is just chaining, each set, returns the object with the field set. Again no validations at the `with_x` or
+    `with_whatever` layer
+- merged builder
+  - if the different types of default args that you need to set are really common, just add those to the builder itself.
