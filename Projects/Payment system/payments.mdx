@@ -1,0 +1,110 @@
+---
+title: Payment system
+date: 21Nov26
+---
+
+**Problem**
+
+Design a system that supports payments through Credit Card, PayPal, and Digital Wallet.
+Each payment method should implement `pay(amount)` and `refund(transaction_id)`.
+
+### A simple factory
+
+This is the simpler solution that violates SOLID but it's the intuitive one so I must start here.
+
+```text
++---------------------+    calls    +------------------------------------+
+|   CheckoutService   | ----------> |           PaymentFactory           |
+|      (Client)       |             +------------------------------------+
++---------------------+             | + create(method): PaymentProcessor |
+           |                        +------------------------------------+
+           | uses                                     |
+           |                                          | creates
+           |      +-----------------------------+     |
+           +----> |        <<Abstract>>         | <---+
+                  |      PaymentProcessor       |
+                  +-----------------------------+
+                  | + pay(amount)               |
+                  | + refund(transaction_id)    |
+                  +-----------------------------+
+                                 ^
+                                 | inherits
+           +---------------------+----------------------+
+           |                     |                      |
++---------------------+ +-----------------+ +----------------------+
+|  CreditCardPayment  | |  PayPalPayment  | | DigitalWalletPayment |
++---------------------+ +-----------------+ +----------------------+
+| + pay(amount)       | | + pay(amount)   | | + pay(amount)        |
+| + refund(tx_id)     | | + refund(tx_id) | | + refund(tx_id)      |
++---------------------+ +-----------------+ +----------------------+
+```
+
+Now try to verify SOLID. The assumption is that the factory here will have an if casing to branch on what object to make.
+
+- need to add a new payment method?
+  - make the class, modify the payment factory to add the if branch
+  - this will be a problem but is simpler to understand
+
+### Factory Method
+
+This is the one that textbooks like, and only makes sense in a large corporate setting, where the split of impl if across different teams.
+
+```text
+       +---------------------+
+       |   CheckoutService   |
+       |      (Client)       |
+       +---------------------+
+                  |
+                  | uses
+                  v
+   +------------------------------+   returns   +--------------------------+
+   |         <<Abstract>>         | ----------> |       <<Abstract>>       |
+   |        PaymentFactory        |             |     PaymentProcessor     |
+   +------------------------------+             +--------------------------+
+   | + create_processor()         |             | + pay(amount)            |
+   | + execute_payment(amount)    |             | + refund(tx_id)          |
+   | + execute_refund(tx_id)      |             +--------------------------+
+   +------------------------------+                          ^
+                  ^                                          |
+                  | inherits                                 | inherits
+                  |                                          |
+   +------------------------------+   creates   +--------------------------+
+   |      CreditCardFactory       | ----------> |    CreditCardPayment     |
+   +------------------------------+             +--------------------------+
+   | + create_processor()         |             | + pay(amount)            |
+   +------------------------------+             | + refund(tx_id)          |
+                  .                             +--------------------------+
+                  .                                          .
+                  .  (PayPal, DigitalWallet, etc.)           .
+```
+
+-y the "factory" is the most generic thing, all it does is look up a registry mapping of string to what subclass factory to use too ( factory to factory )
+- registry does the heavy lifting
+- what does this indirection gain me?
+  - it makes sense for big corporate. Something like paypayl factory NEEDS paypal keys to work and this should not be a detail known a generic main factory
+  - if my team owns paypayl factory, I can expose a clean interface shared ( forced by it being an instance of PaymentFactory) to the shared workflow and keep my impl
+    wiring ugly
+    - but how does the "extra" args or deps settled then?
+    - these are at the registry level for something like keys
+    - for something like args, for example if you are processing via credit card you do NEED a card number, you just dump it all into a map ( or a details object if you really
+    like one more type to exist )
+
+
+**Coming back to 2026**
+
+Let's rethink it all, for in the above setup I still need to make a "details" object to pass args.
+If I am static typing over the request anyways, then I know all request types and the mapping to processors.
+One could just write a "match case" there; this will be identical to the simple factory case though.
+
+_Ok, so finally and once and for all... where do you write a factory like this_
+
+it's all back to corpa again
+- if the library cannot ahead of time know all the types, a match or if casing CANNOT be part of the lib, it needs to do it runtime, naturally the details object as well won't exist
+  - consider you are making a libary, best you can do is ask them to implement an interface and that all the args they need would be sent dynamically via a map or kwargs
+
+---
+
+Summarising ( for actual knowledge )
+- go for simple factory first
+- the whole thing is on "creation", it's a creational pattern after all. Selection on ui is not at all relevant here but in an actual app would pe, which is why you almost always know the full set of type unless you are building a library
+- 100% closure is a myth, all we can do is move things as high as possible aka to the composition root
