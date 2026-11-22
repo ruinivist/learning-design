@@ -79,6 +79,7 @@ This is the one that textbooks like, and only makes sense in a large corporate s
 ```
 
 -y the "factory" is the most generic thing, all it does is look up a registry mapping of string to what subclass factory to use too ( factory to factory )
+
 - registry does the heavy lifting
 - what does this indirection gain me?
   - it makes sense for big corporate. Something like paypayl factory NEEDS paypal keys to work and this should not be a detail known a generic main factory
@@ -87,8 +88,7 @@ This is the one that textbooks like, and only makes sense in a large corporate s
     - but how does the "extra" args or deps settled then?
     - these are at the registry level for something like keys
     - for something like args, for example if you are processing via credit card you do NEED a card number, you just dump it all into a map ( or a details object if you really
-    like one more type to exist )
-
+      like one more type to exist )
 
 **Coming back to 2026**
 
@@ -99,12 +99,41 @@ One could just write a "match case" there; this will be identical to the simple 
 _Ok, so finally and once and for all... where do you write a factory like this_
 
 it's all back to corpa again
+
 - if the library cannot ahead of time know all the types, a match or if casing CANNOT be part of the lib, it needs to do it runtime, naturally the details object as well won't exist
   - consider you are making a libary, best you can do is ask them to implement an interface and that all the args they need would be sent dynamically via a map or kwargs
 
 ---
 
 Summarising ( for actual knowledge )
+
 - go for simple factory first
 - the whole thing is on "creation", it's a creational pattern after all. Selection on ui is not at all relevant here but in an actual app would pe, which is why you almost always know the full set of type unless you are building a library
 - 100% closure is a myth, all we can do is move things as high as possible aka to the composition root
+
+| Owner            | Maintains                                         | Decides                                                             |
+| ---------------- | ------------------------------------------------- | ------------------------------------------------------------------- |
+| Checkout         | `processOrder()`                                  | What order to charge and when to mark it paid                       |
+| Payment platform | `PaymentFactory`, `execPayment()`, `execRefund()` | What validation, logging, and refund checks apply to every provider |
+| PayPal team      | `PayPalFactory`, `PayPalProcessor`                | How to build the processor and how to talk to PayPal                |
+
+Note that each owner is a level of "decoupling", you could have the checkout and payment platfomr merged but it's possible to have them separate.
+
+### Practice
+
+- **Goal:** Core checkout platform where external teams plug in providers implementing `pay(amount) -> tx_id` and `refund(tx_id)`.
+- **Providers:** Card (`api_key`, `fee_rate`), PayPal (`merchant_email`), Wallet (`WalletAccount` with balance checks).
+- **Constraints:** Unbypassable validation & double-refund guardrails; zero core edits when adding a new provider; `process_order()` stays decoupled; no untyped `dict`s.
+- **Drills:** Add a 4th provider, mock-test `process_order()`, defend Factory Method vs. typed `match` vs. Strategy.
+
+* Why use Factory Method instead of a Simple Factory or plain dict?
+  - It hides divergent constructor dependencies (API keys, DB pools) behind a uniform interface and centralizes shared workflow logic (validation, refund tracking) in the base factory.
+* Doesn't mapping user input (e.g., `"paypal"`) to a concrete factory still violate Open/Closed?
+  - 100% closure is a myth; aim for strategic closure by pushing the mapping to the Composition Root (edge of the app) so core logic stays untouched, or use auto-discovery.
+* Why is `pay(amount, details: dict)` a trap, and how do you avoid it?
+  - A raw `dict` loses static typing and causes runtime `KeyError`s; use typed dataclasses in a Union with `match` and `assert_never` so the type checker catches missing cases.
+* If a typed `match` block is just a Simple Factory, when is classic Factory Method actually needed?
+  - When you have an open set of types—like a library or core platform where external teams plug in new implementations without modifying your code.
+* Why pass a `PaymentFactory` instead of an already-built `PaymentProcessor` (like Strategy)?
+  - Only when you need lazy creation, fresh instances per call/retry, or enforced base-class workflow guardrails; otherwise, simplify and pass the `PaymentProcessor` directly.
+    - factory is what say I use and what I own, if I add just use processors then I don't have a single centralised place where I can put guardrails or tracking related common code. I don't want people to be using the payment processor without my wrapper.
